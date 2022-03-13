@@ -40,7 +40,7 @@ fileprivate class _VMLinkedMapNode: NSObject {
 
 fileprivate class _VMLinkedMap: NSObject {
   
-  var _dict: [AnyHashable: Any]
+  var _dict: [AnyHashable: _VMLinkedMapNode]
   
   private(set) var _head: _VMLinkedMapNode?
   private(set) var _tail: _VMLinkedMapNode?
@@ -53,7 +53,7 @@ fileprivate class _VMLinkedMap: NSObject {
   var _releaseAsynchronously: Bool
   
   override init() {
-    self._dict = [AnyHashable: Any]()
+    self._dict = [AnyHashable: _VMLinkedMapNode]()
     
     self._head = nil
     self._tail = nil
@@ -73,7 +73,7 @@ fileprivate class _VMLinkedMap: NSObject {
   }
   
   func insertNodeAtHead(_ node: _VMLinkedMapNode) {
-    self._dict[node._key] = node._value
+    self._dict[node._key] = node
     
     self._totalCost += node._cost
     
@@ -144,7 +144,7 @@ fileprivate class _VMLinkedMap: NSObject {
     guard let tail = self._tail else {
       return nil
     }
-  
+    
     self._dict.removeValue(forKey: tail._key)
     
     self._totalCost -= tail._cost
@@ -174,7 +174,7 @@ fileprivate class _VMLinkedMap: NSObject {
     if !self._dict.isEmpty {
       var holder = self._dict
       
-      self._dict = [AnyHashable: Any]()
+      self._dict = [AnyHashable: _VMLinkedMapNode]()
       
       if self._releaseAsynchronously {
         let releaseQueue = VMMemoryCacheGetReleaseQueue(self._releaseOnMainThread)
