@@ -10,7 +10,7 @@
 import Foundation
 import UIKit
 
-func VMMemoryCacheGetReleaseQueue(_ releaseOnMainThread: Bool) -> DispatchQueue {
+fileprivate func _VMMemoryCacheGetReleaseQueue(_ releaseOnMainThread: Bool) -> DispatchQueue {
   return releaseOnMainThread ? DispatchQueue.main : DispatchQueue.global(qos: .utility)
 }
 
@@ -178,7 +178,7 @@ fileprivate class _VMLinkedMap: NSObject {
       self._dict = [AnyHashable: _VMLinkedMapNode]()
       
       if self._releaseAsynchronously {
-        let releaseQueue = VMMemoryCacheGetReleaseQueue(self._releaseOnMainThread)
+        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._releaseOnMainThread)
         releaseQueue.async {
           holder.removeAll()
         }
@@ -372,7 +372,7 @@ public class VMMemoryCache: NSObject {
     
     if self._lru._totalCount > self.countLimit, let tailNode = self._lru.removeTail() {
       if self._lru._releaseAsynchronously {
-        let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
         releaseQueue.async {
           _ = tailNode.classForCoder
         }
@@ -420,7 +420,7 @@ public class VMMemoryCache: NSObject {
       self._lru.removeNode(node!)
       
       if self._lru._releaseAsynchronously {
-        let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
         releaseQueue.async {
           _ = node!.classForCoder
         }
@@ -514,7 +514,7 @@ public class VMMemoryCache: NSObject {
     }
     
     if !holder.isEmpty {
-      let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+      let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
         holder.removeAll()
       }
@@ -561,7 +561,7 @@ public class VMMemoryCache: NSObject {
     }
     
     if !holder.isEmpty {
-      let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+      let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
         holder.removeAll()
       }
@@ -610,7 +610,7 @@ public class VMMemoryCache: NSObject {
     }
     
     if !holder.isEmpty {
-      let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+      let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
         holder.removeAll()
       }
