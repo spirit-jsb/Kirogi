@@ -516,8 +516,7 @@ public class VMMemoryCache: NSObject {
     if !holder.isEmpty {
       let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
-        // 我不李姐...
-        _ = holder.count
+        holder.removeAll()
       }
     }
   }
@@ -564,8 +563,7 @@ public class VMMemoryCache: NSObject {
     if !holder.isEmpty {
       let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
-        // 我不李姐...
-        _ = holder.count
+        holder.removeAll()
       }
     }
   }
@@ -614,8 +612,7 @@ public class VMMemoryCache: NSObject {
     if !holder.isEmpty {
       let releaseQueue = VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
       releaseQueue.async {
-        // 我不李姐...
-        _ = holder.count
+        holder.removeAll()
       }
     }
   }
