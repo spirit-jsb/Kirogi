@@ -94,7 +94,9 @@ internal class VMKVStorage: NSObject {
   private var _dbOpenFailLastTime: TimeInterval = 0.0
   
   init?(path: String?, type: VMKVStorageType) {
-    guard let path = path else {
+    guard let path = path, !path.isEmpty else {
+      print("VMKVStorage init error: invalid path: [\(String(describing: path))].")
+      
       return nil
     }
     
