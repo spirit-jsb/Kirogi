@@ -796,11 +796,11 @@ extension VMKVStorage {
   }
   
   @discardableResult
-  private func _dbSaveItem(withKey key: String?, value: Data, extendedData: Data, filename: String) -> Bool {
-    guard let key = key, !key.isEmpty else {
+  private func _dbSaveItem(withKey key: String, value: Data, extendedData: Data?, filename: String?) -> Bool {
+    guard !key.isEmpty else {
       return false
     }
-
+    
     let sql = """
       insert
         or replace into kirogi (
