@@ -1717,12 +1717,4 @@ extension VMKVStorage {
   }
 }
 
-postfix operator ++
-fileprivate postfix func ++ (left: inout Int32) -> Int32 {
-  defer {
-    left += 1
-  }
-  return left
-}
-
 #endif
