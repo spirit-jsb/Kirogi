@@ -222,8 +222,8 @@ internal class VMKVStorage: NSObject {
       case .sqlite:
         itemValue = self._dbGetValue(forKey: key)
       case .file:
-        if let filename = self._dbGetFilename(forKey: key) {
-          
+        let filename = self._dbGetFilename(forKey: key)
+        if let filename = filename {
           itemValue = self._readFile(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
@@ -231,8 +231,8 @@ internal class VMKVStorage: NSObject {
           }
         }
       case .mixed:
-        if let filename = self._dbGetFilename(forKey: key) {
-          
+        let filename = self._dbGetFilename(forKey: key)
+        if let filename = filename {
           itemValue = self._readFile(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
@@ -310,7 +310,8 @@ internal class VMKVStorage: NSObject {
       case .file:
         fallthrough
       case .mixed:
-        if let filename = self._dbGetFilename(forKey: key) {
+        let filename = self._dbGetFilename(forKey: key)
+        if let filename = filename {
           self._deleteFile(withName: filename)
         }
       default:
@@ -332,7 +333,8 @@ internal class VMKVStorage: NSObject {
       case .file:
         fallthrough
       case .mixed:
-        if let filenames = self._dbGetFilenames(forKeys: keys) {
+        let filenames = self._dbGetFilenames(forKeys: keys)
+        if let filenames = filenames {
           filenames.forEach {
             self._deleteFile(withName: $0)
           }
@@ -362,7 +364,8 @@ internal class VMKVStorage: NSObject {
         case .file:
           fallthrough
         case .mixed:
-          if let filenames = self._dbGetFilenamesLargerThanSize(size) {
+          let filenames = self._dbGetFilenamesLargerThanSize(size)
+          if let filenames = filenames {
             filenames.forEach {
               self._deleteFile(withName: $0)
             }
@@ -397,7 +400,8 @@ internal class VMKVStorage: NSObject {
         case .file:
           fallthrough
         case .mixed:
-          if let filenames = self._dbGetFilenamesEarlierThanTime(time) {
+          let filenames = self._dbGetFilenamesEarlierThanTime(time)
+          if let filenames = filenames {
             filenames.forEach {
               self._deleteFile(withName: $0)
             }
@@ -823,14 +827,19 @@ extension VMKVStorage {
     
     sqlite3_bind_text(stmt!, 1, key, -1, nil)
     
-    if !filename.isEmpty {
+    if let filename = filename, !filename.isEmpty {
       sqlite3_bind_blob(stmt!, 2, [UInt8](value), Int32([UInt8](value).count), nil)
     }
     else {
       sqlite3_bind_blob(stmt!, 2, nil, 0, nil)
     }
     
-    sqlite3_bind_blob(stmt!, 3, [UInt8](extendedData), Int32([UInt8](extendedData).count), nil)
+    if let extendedData = extendedData {
+      sqlite3_bind_blob(stmt!, 3, [UInt8](extendedData), Int32([UInt8](extendedData).count), nil)
+    }
+    else {
+      sqlite3_bind_blob(stmt!, 3, nil, 0, nil)
+    }
     
     sqlite3_bind_text(stmt!, 4, filename, -1, nil)
     
@@ -949,7 +958,7 @@ extension VMKVStorage {
     guard let keys = keys, !keys.isEmpty else {
       return nil
     }
-
+    
     guard self._dbCheck() else {
       return nil
     }
@@ -1004,7 +1013,8 @@ extension VMKVStorage {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        if let item = self._dbGetItem(fromStmt: stmt!, excludeInlineData: excludeInlineData) {
+        let item = self._dbGetItem(fromStmt: stmt!, excludeInlineData: excludeInlineData)
+        if let item = item {
           items?.append(item)
         }
       }
@@ -1212,7 +1222,8 @@ extension VMKVStorage {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        if let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil }) {
+        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        if let filename = filename {
           filenames?.append(filename)
         }
       }
@@ -1262,7 +1273,8 @@ extension VMKVStorage {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        if let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil }) {
+        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        if let filename = filename {
           filenames?.append(filename)
         }
       }
@@ -1310,7 +1322,8 @@ extension VMKVStorage {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        if let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil }) {
+        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        if let filename = filename {
           filenames?.append(filename)
         }
       }
