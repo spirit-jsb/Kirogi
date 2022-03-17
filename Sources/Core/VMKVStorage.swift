@@ -104,28 +104,20 @@ internal class VMKVStorage: NSObject {
     
     self.errorLogsEnabled = true
     
-    let pathUrl = URL(fileURLWithPath: path)
+    self._dbPath = path.appendingPathComponent(self._dbFilename)
     
-    let dbPathUrl = pathUrl.appendingPathComponent(self._dbFilename)
+    self._dataPath = path.appendingPathComponent(self._dataDirname)
     
-    let dataPathUrl = pathUrl.appendingPathComponent(self._dataDirname, isDirectory: true)
-    
-    let trashPathUrl = pathUrl.appendingPathComponent(self._trashDirname, isDirectory: true)
-    
-    self._dbPath = dbPathUrl.absoluteString
-    
-    self._dataPath = dataPathUrl.absoluteString
-    
-    self._trashPath = trashPathUrl.absoluteString
+    self._trashPath = path.appendingPathComponent(self._trashDirname)
     
     self._trashQueue = DispatchQueue(label: "com.max.jian.Kirogi.cache.disk.trash")
     
     do {
-      try FileManager.default.createDirectory(at: pathUrl, withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
       
-      try FileManager.default.createDirectory(at: dataPathUrl, withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.createDirectory(atPath: path.appendingPathComponent(self._dataDirname), withIntermediateDirectories: true, attributes: nil)
       
-      try FileManager.default.createDirectory(at: trashPathUrl, withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.createDirectory(atPath: path.appendingPathComponent(self._trashDirname), withIntermediateDirectories: true, attributes: nil)
     }
     catch {
       return nil
