@@ -168,11 +168,11 @@ internal class VMKVStorage: NSObject {
     return true
   }
   
-  func saveItem(withKey key: String, value: Data) -> Bool {
+  func saveItem(withKey key: String?, value: Data) -> Bool {
     return true
   }
   
-  func saveItem(withKey key: String, value: Data, filename: String?, extendedData: Data?) -> Bool {
+  func saveItem(withKey key: String?, value: Data, filename: String?, extendedData: Data?) -> Bool {
     return true
   }
   
@@ -500,7 +500,11 @@ extension VMKVStorage {
     }
   }
   
-  private func _dbSaveItem(withKey key: String, value: Data, extendedData: Data, filename: String) -> Bool {
+  private func _dbSaveItem(withKey key: String?, value: Data, extendedData: Data, filename: String) -> Bool {
+    guard let key = key, !key.isEmpty else {
+      return false
+    }
+
     let sql = """
       insert
         or replace into kirogi (
@@ -552,7 +556,11 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
-  private func _dbGetItem(withKey key: String, excludeInlineData: Bool) -> VMKVStorageItem? {
+  private func _dbGetItem(withKey key: String?, excludeInlineData: Bool) -> VMKVStorageItem? {
+    guard let key = key, !key.isEmpty else {
+      return nil
+    }
+    
     let sql = excludeInlineData ?
       """
       select
@@ -606,7 +614,11 @@ extension VMKVStorage {
     return item
   }
   
-  private func _dbGetItemCount(withKey key: String) -> Int {
+  private func _dbGetItemCount(withKey key: String?) -> Int {
+    guard let key = key, !key.isEmpty else {
+      return -1
+    }
+    
     let sql = """
       select
         count(key)
@@ -639,7 +651,11 @@ extension VMKVStorage {
     return itemCount
   }
   
-  private func _dbGetItems(withKeys keys: [String], excludeInlineData: Bool) -> [VMKVStorageItem]? {
+  private func _dbGetItems(withKeys keys: [String]?, excludeInlineData: Bool) -> [VMKVStorageItem]? {
+    guard let keys = keys, !keys.isEmpty else {
+      return nil
+    }
+
     guard self._dbCheck() else {
       return nil
     }
@@ -1080,7 +1096,11 @@ extension VMKVStorage {
     return totalItemSize
   }
   
-  private func _dbDeleteItem(withKey key: String) -> Bool {
+  private func _dbDeleteItem(withKey key: String?) -> Bool {
+    guard let key = key, !key.isEmpty else {
+      return false
+    }
+    
     let sql = """
       delete from
         kirogi
@@ -1106,7 +1126,11 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
-  private func _dbDeleteItems(withKeys keys: [String]) -> Bool {
+  private func _dbDeleteItems(withKeys keys: [String]?) -> Bool {
+    guard let keys = keys, !keys.isEmpty else {
+      return false
+    }
+    
     guard self._dbCheck() else {
       return false
     }
@@ -1195,7 +1219,11 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
-  private func _dbUpdateLastAccessTimestamp(withKey key: String) -> Bool {
+  private func _dbUpdateLastAccessTimestamp(withKey key: String?) -> Bool {
+    guard let key = key, !key.isEmpty else {
+      return false
+    }
+    
     let sql = """
       update
         kirogi
@@ -1226,7 +1254,11 @@ extension VMKVStorage {
   }
   
   @discardableResult
-  private func _dbUpdateLastAccessTimestamp(withKeys keys: [String]) -> Bool {
+  private func _dbUpdateLastAccessTimestamp(withKeys keys: [String]?) -> Bool {
+    guard let keys = keys, !keys.isEmpty else {
+      return false
+    }
+    
     guard self._dbCheck() else {
       return false
     }
