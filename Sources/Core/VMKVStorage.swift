@@ -167,17 +167,49 @@ internal class VMKVStorage: NSObject {
   
   @discardableResult
   func saveItem(_ item: VMKVStorageItem) -> Bool {
-    return true
+    return self.saveItem(withKey: item.key, value: item.value, extendedData: item.extendedData, filename: item.filename)
   }
   
   @discardableResult
-  func saveItem(withKey key: String?, value: Data) -> Bool {
-    return true
+  func saveItem(withKey key: String?, value: Data?) -> Bool {
+    return self.saveItem(withKey: key, value: value, extendedData: nil, filename: nil)
   }
   
   @discardableResult
-  func saveItem(withKey key: String?, value: Data, filename: String?, extendedData: Data?) -> Bool {
-    return true
+  func saveItem(withKey key: String?, value: Data?, extendedData: Data?, filename: String?) -> Bool {
+    guard let key = key, !key.isEmpty, let value = value, !value.isEmpty else {
+      return false
+    }
+    
+    if self.type == .file && (filename == nil || filename!.isEmpty) {
+      return false
+    }
+    
+    if let filename = filename {
+      let writeResult = self._writeFile(withName: filename, data: value)
+      if !writeResult {
+        return writeResult
+      }
+      
+      let saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: filename)
+      if !saveItemResult {
+        self._deleteFile(withName: filename)
+      }
+      
+      return saveItemResult
+    }
+    else {
+      if self.type != .sqlite {
+        let filename = self._dbGetFilename(forKey: key)
+        if let filename = filename {
+          self._deleteFile(withName: filename)
+        }
+      }
+      
+      let saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: nil)
+      
+      return saveItemResult
+    }
   }
   
   func getItem(forKey key: String) -> VMKVStorageItem? {
