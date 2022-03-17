@@ -12,8 +12,9 @@ import QuartzCore
 import CSQLite
 
 internal enum VMKVStorageType: Int {
-  case file
   case sqlite
+  case file
+  case mixed
 }
 
 internal class VMKVStorageItem: NSObject {
@@ -212,7 +213,43 @@ internal class VMKVStorage: NSObject {
   }
   
   func getItemValue(forKey key: String) -> Data? {
-    return nil
+    guard !key.isEmpty else {
+      return nil
+    }
+    
+    var itemValue: Data?
+    
+    switch self.type {
+      case .sqlite:
+        itemValue = self._dbGetValue(forKey: key)
+      case .file:
+        if let filename = self._dbGetFilename(forKey: key) {
+          itemValue = try? self._fileRead(withName: filename)
+          
+          if itemValue == nil {
+            self._dbDeleteItem(withKey: key)
+            itemValue = nil
+          }
+        }
+      case .mixed:
+        if let filename = self._dbGetFilename(forKey: key) {
+          itemValue = try? self._fileRead(withName: filename)
+          
+          if itemValue == nil {
+            self._dbDeleteItem(withKey: key)
+            itemValue = nil
+          }
+        }
+        else {
+          itemValue = self._dbGetValue(forKey: key)
+        }
+    }
+    
+    if itemValue != nil {
+      self._dbUpdateLastAccessTimestamp(withKey: key)
+    }
+    
+    return itemValue
   }
   
   func getItems(forKeys keys: [String]) -> [VMKVStorageItem]? {
