@@ -137,7 +137,7 @@ internal class VMKVStorage: NSObject {
       self._dbClose()
       
       // rebuild
-      self._rebuild()
+      self._reset()
       
       if !self._dbOpen() || !self._dbInitialize() {
         self._dbClose()
@@ -306,7 +306,7 @@ internal class VMKVStorage: NSObject {
 extension VMKVStorage {
   
   // MARK: - private
-  private func _rebuild() {
+  private func _reset() {
     let pathUrl = URL(fileURLWithPath: self.path)
     
     let dbPathUrl = pathUrl.appendingPathComponent(self._dbFilename)
