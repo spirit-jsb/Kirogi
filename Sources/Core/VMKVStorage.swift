@@ -164,14 +164,17 @@ internal class VMKVStorage: NSObject {
     return self._dbGetItemCount(withKey: key) > 0
   }
   
+  @discardableResult
   func saveItem(_ item: VMKVStorageItem) -> Bool {
     return true
   }
   
+  @discardableResult
   func saveItem(withKey key: String?, value: Data) -> Bool {
     return true
   }
   
+  @discardableResult
   func saveItem(withKey key: String?, value: Data, filename: String?, extendedData: Data?) -> Bool {
     return true
   }
@@ -500,6 +503,7 @@ extension VMKVStorage {
     }
   }
   
+  @discardableResult
   private func _dbSaveItem(withKey key: String?, value: Data, extendedData: Data, filename: String) -> Bool {
     guard let key = key, !key.isEmpty else {
       return false
@@ -1096,6 +1100,7 @@ extension VMKVStorage {
     return totalItemSize
   }
   
+  @discardableResult
   private func _dbDeleteItem(withKey key: String?) -> Bool {
     guard let key = key, !key.isEmpty else {
       return false
@@ -1126,6 +1131,7 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
+  @discardableResult
   private func _dbDeleteItems(withKeys keys: [String]?) -> Bool {
     guard let keys = keys, !keys.isEmpty else {
       return false
@@ -1167,6 +1173,7 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
+  @discardableResult
   private func _dbDeleteItemsLargerThanSize(_ size: Int) -> Bool {
     let sql = """
       delete from
@@ -1193,6 +1200,7 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
+  @discardableResult
   private func _dbDeleteItemsEarlierThanTime(_ time: Int32) -> Bool {
     let sql = """
       delete from
@@ -1219,6 +1227,7 @@ extension VMKVStorage {
     return stepCode == SQLITE_DONE
   }
   
+  @discardableResult
   private func _dbUpdateLastAccessTimestamp(withKey key: String?) -> Bool {
     guard let key = key, !key.isEmpty else {
       return false
