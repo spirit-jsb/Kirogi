@@ -191,8 +191,7 @@ internal class VMKVStorage: NSObject {
       self._dbUpdateLastAccessTimestamp(withKey: key)
       
       if let filename = item?.filename {
-        item!.value = try? self._fileRead(withName: filename)
-        
+        item!.value = self._readFile(withName: filename)
         if item!.value == nil {
           self._dbDeleteItem(withKey: key)
           
@@ -224,8 +223,8 @@ internal class VMKVStorage: NSObject {
         itemValue = self._dbGetValue(forKey: key)
       case .file:
         if let filename = self._dbGetFilename(forKey: key) {
-          itemValue = try? self._fileRead(withName: filename)
           
+          itemValue = self._readFile(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
             itemValue = nil
@@ -233,8 +232,8 @@ internal class VMKVStorage: NSObject {
         }
       case .mixed:
         if let filename = self._dbGetFilename(forKey: key) {
-          itemValue = try? self._fileRead(withName: filename)
           
+          itemValue = self._readFile(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
             itemValue = nil
@@ -262,8 +261,7 @@ internal class VMKVStorage: NSObject {
     if self.type != .sqlite {
       items.enumerated().forEach { (indices, _) in
         if let filename = items[indices].filename {
-          items[indices].value = try? self._fileRead(withName: filename)
-          
+          items[indices].value = self._readFile(withName: filename)
           if items[indices].value == nil {
             if let key = items[indices].key {
               self._dbDeleteItem(withKey: key)
@@ -313,7 +311,7 @@ internal class VMKVStorage: NSObject {
         fallthrough
       case .mixed:
         if let filename = self._dbGetFilename(forKey: key) {
-          try? self._fileDelete(withName: filename)
+          self._deleteFile(withName: filename)
         }
       default:
         break
@@ -336,7 +334,7 @@ internal class VMKVStorage: NSObject {
       case .mixed:
         if let filenames = self._dbGetFilenames(forKeys: keys) {
           filenames.forEach {
-            try? self._fileDelete(withName: $0)
+            self._deleteFile(withName: $0)
           }
         }
       default:
@@ -366,7 +364,7 @@ internal class VMKVStorage: NSObject {
         case .mixed:
           if let filenames = self._dbGetFilenamesLargerThanSize(size) {
             filenames.forEach {
-              try? self._fileDelete(withName: $0)
+              self._deleteFile(withName: $0)
             }
           }
         default:
@@ -401,7 +399,7 @@ internal class VMKVStorage: NSObject {
         case .mixed:
           if let filenames = self._dbGetFilenamesEarlierThanTime(time) {
             filenames.forEach {
-              try? self._fileDelete(withName: $0)
+              self._deleteFile(withName: $0)
             }
           }
         default:
@@ -448,7 +446,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if totalItemSize > maxSize {
           if let filename = deletableItem.filename {
-            try? self._fileDelete(withName: filename)
+            self._deleteFile(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -501,7 +499,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if totalItemCount > maxCount {
           if let filename = deletableItem.filename {
-            try? self._fileDelete(withName: filename)
+            self._deleteFile(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -564,7 +562,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if left > 0 {
           if let filename = deletableItem.filename {
-            try? self._fileDelete(withName: filename)
+            self._deleteFile(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -612,7 +610,7 @@ extension VMKVStorage {
     try? FileManager.default.removeItem(at: dbWALPathUrl)
     try? FileManager.default.removeItem(at: dbWALIndexPathUrl)
     
-    try? self._fileMoveAllToTrash()
+    self._fileMoveAllToTrash()
     self._fileEmptyTrashInBackground()
   }
 }
@@ -1604,32 +1602,56 @@ extension VMKVStorage {
 extension VMKVStorage {
   
   // MARK: - file
-  private func _fileWrite(withName filename: String, data: Data) throws {
+  @discardableResult
+  private func _writeFile(withName filename: String, data: Data) -> Bool {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
-    try data.write(to: fileDataUrl, options: [])
+    do {
+      try data.write(to: fileDataUrl, options: [])
+      
+      return true
+    }
+    catch {
+      return false
+    }
   }
   
-  private func _fileRead(withName filename: String) throws -> Data {
+  private func _readFile(withName filename: String) -> Data? {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
-    return try Data(contentsOf: fileDataUrl, options: [])
+    return try? Data(contentsOf: fileDataUrl, options: [])
   }
   
-  private func _fileDelete(withName filename: String) throws {
+  @discardableResult
+  private func _deleteFile(withName filename: String) -> Bool {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
-    try FileManager.default.removeItem(at: fileDataUrl)
+    do {
+      try FileManager.default.removeItem(at: fileDataUrl)
+      
+      return true
+    }
+    catch {
+      return false
+    }
   }
   
-  private func _fileMoveAllToTrash() throws {
+  @discardableResult
+  private func _fileMoveAllToTrash() -> Bool {
     let uuidString = UUID().uuidString
     
     let dataUrl = URL(fileURLWithPath: self._dataPath)
     let tmpTrashUrl = URL(fileURLWithPath: self._trashPath).appendingPathComponent(uuidString)
     
-    try FileManager.default.moveItem(at: dataUrl, to: tmpTrashUrl)
-    try FileManager.default.createDirectory(at: dataUrl, withIntermediateDirectories: true, attributes: nil)
+    do {
+      try FileManager.default.moveItem(at: dataUrl, to: tmpTrashUrl)
+      try FileManager.default.createDirectory(at: dataUrl, withIntermediateDirectories: true, attributes: nil)
+      
+      return true
+    }
+    catch {
+      return false
+    }
   }
   
   private func _fileEmptyTrashInBackground() {
