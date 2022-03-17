@@ -152,7 +152,7 @@ internal class VMKVStorage: NSObject {
     }
     
     // empty the trash if failed at last time
-    self._fileEmptyTrashInBackground()
+    self._emptyTrashInBackground()
   }
   
   deinit {
@@ -188,14 +188,14 @@ internal class VMKVStorage: NSObject {
     }
     
     if let filename = filename {
-      let writeResult = self._writeFile(withName: filename, data: value)
+      let writeResult = self._fileWrite(withName: filename, data: value)
       if !writeResult {
         return writeResult
       }
       
       let saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: filename)
       if !saveItemResult {
-        self._deleteFile(withName: filename)
+        self._fileDelete(withName: filename)
       }
       
       return saveItemResult
@@ -204,7 +204,7 @@ internal class VMKVStorage: NSObject {
       if self.type != .sqlite {
         let filename = self._dbGetFilename(forKey: key)
         if let filename = filename {
-          self._deleteFile(withName: filename)
+          self._fileDelete(withName: filename)
         }
       }
       
@@ -225,7 +225,7 @@ internal class VMKVStorage: NSObject {
       self._dbUpdateLastAccessTimestamp(withKey: key)
       
       if let filename = item?.filename {
-        item!.value = self._readFile(withName: filename)
+        item!.value = self._fileRead(withName: filename)
         if item!.value == nil {
           self._dbDeleteItem(withKey: key)
           
@@ -258,7 +258,7 @@ internal class VMKVStorage: NSObject {
       case .file:
         let filename = self._dbGetFilename(forKey: key)
         if let filename = filename {
-          itemValue = self._readFile(withName: filename)
+          itemValue = self._fileRead(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
             itemValue = nil
@@ -267,7 +267,7 @@ internal class VMKVStorage: NSObject {
       case .mixed:
         let filename = self._dbGetFilename(forKey: key)
         if let filename = filename {
-          itemValue = self._readFile(withName: filename)
+          itemValue = self._fileRead(withName: filename)
           if itemValue == nil {
             self._dbDeleteItem(withKey: key)
             itemValue = nil
@@ -295,7 +295,7 @@ internal class VMKVStorage: NSObject {
     if self.type != .sqlite {
       items.enumerated().forEach { (indices, _) in
         if let filename = items[indices].filename {
-          items[indices].value = self._readFile(withName: filename)
+          items[indices].value = self._fileRead(withName: filename)
           if items[indices].value == nil {
             if let key = items[indices].key {
               self._dbDeleteItem(withKey: key)
@@ -346,7 +346,7 @@ internal class VMKVStorage: NSObject {
       case .mixed:
         let filename = self._dbGetFilename(forKey: key)
         if let filename = filename {
-          self._deleteFile(withName: filename)
+          self._fileDelete(withName: filename)
         }
       default:
         break
@@ -370,7 +370,7 @@ internal class VMKVStorage: NSObject {
         let filenames = self._dbGetFilenames(forKeys: keys)
         if let filenames = filenames {
           filenames.forEach {
-            self._deleteFile(withName: $0)
+            self._fileDelete(withName: $0)
           }
         }
       default:
@@ -401,7 +401,7 @@ internal class VMKVStorage: NSObject {
           let filenames = self._dbGetFilenamesLargerThanSize(size)
           if let filenames = filenames {
             filenames.forEach {
-              self._deleteFile(withName: $0)
+              self._fileDelete(withName: $0)
             }
           }
         default:
@@ -437,7 +437,7 @@ internal class VMKVStorage: NSObject {
           let filenames = self._dbGetFilenamesEarlierThanTime(time)
           if let filenames = filenames {
             filenames.forEach {
-              self._deleteFile(withName: $0)
+              self._fileDelete(withName: $0)
             }
           }
         default:
@@ -484,7 +484,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if totalItemSize > maxSize {
           if let filename = deletableItem.filename {
-            self._deleteFile(withName: filename)
+            self._fileDelete(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -537,7 +537,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if totalItemCount > maxCount {
           if let filename = deletableItem.filename {
-            self._deleteFile(withName: filename)
+            self._fileDelete(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -600,7 +600,7 @@ internal class VMKVStorage: NSObject {
       for deletableItem in deletableItems {
         if left > 0 {
           if let filename = deletableItem.filename {
-            self._deleteFile(withName: filename)
+            self._fileDelete(withName: filename)
           }
           
           result = self._dbDeleteItem(withKey: deletableItem.key)
@@ -648,8 +648,8 @@ extension VMKVStorage {
     try? FileManager.default.removeItem(at: dbWALPathUrl)
     try? FileManager.default.removeItem(at: dbWALIndexPathUrl)
     
-    self._fileMoveAllToTrash()
-    self._fileEmptyTrashInBackground()
+    self._allFileMoveToTrash()
+    self._emptyTrashInBackground()
   }
 }
 
@@ -706,7 +706,7 @@ extension VMKVStorage {
         primary key(key)
       );
       
-      create index if not exists last_access_time_idx on manifest(last_access_time);
+      create index if not exists last_access_timestamp_idx on kirogi(last_access_timestamp);
       """
     
     return self._dbExecute(sql)
@@ -1650,7 +1650,7 @@ extension VMKVStorage {
   
   // MARK: - file
   @discardableResult
-  private func _writeFile(withName filename: String, data: Data) -> Bool {
+  private func _fileWrite(withName filename: String, data: Data) -> Bool {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
     do {
@@ -1663,14 +1663,14 @@ extension VMKVStorage {
     }
   }
   
-  private func _readFile(withName filename: String) -> Data? {
+  private func _fileRead(withName filename: String) -> Data? {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
     return try? Data(contentsOf: fileDataUrl, options: [])
   }
   
   @discardableResult
-  private func _deleteFile(withName filename: String) -> Bool {
+  private func _fileDelete(withName filename: String) -> Bool {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
     do {
@@ -1684,7 +1684,7 @@ extension VMKVStorage {
   }
   
   @discardableResult
-  private func _fileMoveAllToTrash() -> Bool {
+  private func _allFileMoveToTrash() -> Bool {
     let uuidString = UUID().uuidString
     
     let dataUrl = URL(fileURLWithPath: self._dataPath)
@@ -1701,7 +1701,7 @@ extension VMKVStorage {
     }
   }
   
-  private func _fileEmptyTrashInBackground() {
+  private func _emptyTrashInBackground() {
     let trashUrl = URL(fileURLWithPath: self._trashPath)
     
     self._trashQueue.async {
