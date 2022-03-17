@@ -302,36 +302,291 @@ internal class VMKVStorage: NSObject {
     return kv
   }
   
+  @discardableResult
   func removeItem(forKey key: String) -> Bool {
-    return true
+    guard !key.isEmpty else {
+      return false
+    }
+    
+    switch self.type {
+      case .file:
+        fallthrough
+      case .mixed:
+        if let filename = self._dbGetFilename(forKey: key) {
+          try? self._fileDelete(withName: filename)
+        }
+      default:
+        break
+    }
+    
+    let result = self._dbDeleteItem(withKey: key)
+    
+    return result
   }
   
+  @discardableResult
   func removeItems(forKeys keys: [String]) -> Bool {
-    return true
+    guard !keys.isEmpty else {
+      return false
+    }
+    
+    switch self.type {
+      case .file:
+        fallthrough
+      case .mixed:
+        if let filenames = self._dbGetFilenames(forKeys: keys) {
+          filenames.forEach {
+            try? self._fileDelete(withName: $0)
+          }
+        }
+      default:
+        break
+    }
+    
+    let result = self._dbDeleteItems(withKeys: keys)
+    
+    return result
   }
   
+  @discardableResult
   func removeItemsLargerThanSize(_ size: Int) -> Bool {
-    return true
+    guard size != .max else {
+      return true
+    }
+    
+    var result: Bool = false
+    
+    if size <= 0 {
+      result = self.removeAllItems()
+    }
+    else {
+      switch self.type {
+        case .file:
+          fallthrough
+        case .mixed:
+          if let filenames = self._dbGetFilenamesLargerThanSize(size) {
+            filenames.forEach {
+              try? self._fileDelete(withName: $0)
+            }
+          }
+        default:
+          break
+      }
+      
+      if self._dbDeleteItemsLargerThanSize(size) {
+        self._dbCheckpoint()
+        
+        result = true
+      }
+    }
+    
+    return result
   }
   
+  @discardableResult
   func removeItemsEarlierThanTime(_ time: Int32) -> Bool {
-    return true
+    guard time > 0 else {
+      return true
+    }
+    
+    var result: Bool = false
+    
+    if time == .max {
+      result = self.removeAllItems()
+    }
+    else {
+      switch self.type {
+        case .file:
+          fallthrough
+        case .mixed:
+          if let filenames = self._dbGetFilenamesEarlierThanTime(time) {
+            filenames.forEach {
+              try? self._fileDelete(withName: $0)
+            }
+          }
+        default:
+          break
+      }
+      
+      if self._dbDeleteItemsEarlierThanTime(time) {
+        self._dbCheckpoint()
+        
+        result = true
+      }
+    }
+    
+    return result
   }
   
+  @discardableResult
   func removeItemsToFixSize(_ maxSize: Int) -> Bool {
-    return true
+    guard maxSize != .max else {
+      return true
+    }
+    
+    guard maxSize > 0 else {
+      return self.removeAllItems()
+    }
+    
+    var totalItemSize = self._dbGetTotalItemSize()
+    
+    guard totalItemSize >= 0 else {
+      return false
+    }
+    
+    guard totalItemSize > maxSize else {
+      return true
+    }
+    
+    var result: Bool = false
+    
+    var deletableItems: [VMKVStorageItem]!
+    
+    repeat {
+      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
+      
+      for deletableItem in deletableItems {
+        if totalItemSize > maxSize {
+          if let filename = deletableItem.filename {
+            try? self._fileDelete(withName: filename)
+          }
+          
+          result = self._dbDeleteItem(withKey: deletableItem.key)
+          totalItemSize -= deletableItem.size
+        }
+        else {
+          break
+        }
+        
+        if !result {
+          break
+        }
+      }
+    } while totalItemSize > maxSize && deletableItems.count > 0 && result
+    
+    if result {
+      self._dbCheckpoint()
+    }
+    
+    return result
   }
   
+  @discardableResult
   func removeItemsToFitCount(_ maxCount: Int) -> Bool {
-    return true
+    guard maxCount != .max else {
+      return true
+    }
+    
+    guard maxCount > 0 else {
+      return self.removeAllItems()
+    }
+    
+    var totalItemCount = self._dbGetTotalItemCount()
+    
+    guard totalItemCount >= 0 else {
+      return false
+    }
+    
+    guard totalItemCount > maxCount else {
+      return true
+    }
+    
+    var result: Bool = false
+    
+    var deletableItems: [VMKVStorageItem]!
+    
+    repeat {
+      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
+      
+      for deletableItem in deletableItems {
+        if totalItemCount > maxCount {
+          if let filename = deletableItem.filename {
+            try? self._fileDelete(withName: filename)
+          }
+          
+          result = self._dbDeleteItem(withKey: deletableItem.key)
+          totalItemCount -= 1
+        }
+        else {
+          break
+        }
+        
+        if !result {
+          break
+        }
+      }
+    } while totalItemCount > maxCount && deletableItems.count > 0 && result
+    
+    if result {
+      self._dbCheckpoint()
+    }
+    
+    return result
   }
   
+  @discardableResult
   func removeAllItems() -> Bool {
+    guard self._dbClose() else {
+      return false
+    }
+    
+    self._reset()
+    
+    guard self._dbOpen() else {
+      return false
+    }
+    
+    guard self._dbInitialize() else {
+      return false
+    }
+    
     return true
   }
   
   func removeAllItems(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
+    let totalItemCount = self._dbGetTotalItemCount()
     
+    guard totalItemCount > 0 else {
+      completion?(totalItemCount < 0)
+      
+      return
+    }
+    
+    var left = totalItemCount
+    
+    var result: Bool = false
+    
+    var deletableItems: [VMKVStorageItem]!
+    
+    repeat {
+      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 32) ?? []
+      
+      for deletableItem in deletableItems {
+        if left > 0 {
+          if let filename = deletableItem.filename {
+            try? self._fileDelete(withName: filename)
+          }
+          
+          result = self._dbDeleteItem(withKey: deletableItem.key)
+          left -= 1
+        }
+        else {
+          break
+        }
+        
+        if !result {
+          break
+        }
+      }
+      
+      progress?(totalItemCount - left, totalItemCount)
+    } while left > 0 && deletableItems.count > 0 && result
+    
+    if result {
+      self._dbCheckpoint()
+    }
+    
+    completion?(!result)
   }
   
   func itemsCount() -> Int {
