@@ -122,19 +122,27 @@ internal class VMKVStorage: NSObject {
       try FileManager.default.createDirectory(atPath: path.appendingPathComponent(self._trashDirname), withIntermediateDirectories: true, attributes: nil)
     }
     catch {
+      print("VMKVStorage init error: \(error)");
+      
       return nil
     }
     
     super.init()
     
-    if !self._dbOpen() || !self._dbInitialize() {
+    let openResult = self._dbOpen()
+    let initializeResult = self._dbInitialize()
+    
+    if !openResult || !initializeResult {
       // db file may broken...
       self._dbClose()
       
       // rebuild
       self._reset()
       
-      if !self._dbOpen() || !self._dbInitialize() {
+      let openResult = self._dbOpen()
+      let initializeResult = self._dbInitialize()
+      
+      if !openResult || !initializeResult {
         self._dbClose()
         
         print("VMKVStorage init error: fail to open sqlite db.")
