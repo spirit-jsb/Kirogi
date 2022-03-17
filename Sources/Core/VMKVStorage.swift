@@ -1666,15 +1666,17 @@ extension VMKVStorage {
   private func _fileRead(withName filename: String) -> Data? {
     let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
     
-    return try? Data(contentsOf: fileDataUrl, options: [])
+    let fileData = try? Data(contentsOf: fileDataUrl, options: [])
+    
+    return fileData
   }
   
   @discardableResult
   private func _fileDelete(withName filename: String) -> Bool {
-    let fileDataUrl = URL(fileURLWithPath: self._dataPath).appendingPathComponent(filename)
+    let fileDataPath = self._dataPath.appendingPathComponent(filename)
     
     do {
-      try FileManager.default.removeItem(at: fileDataUrl)
+      try FileManager.default.removeItem(atPath: fileDataPath)
       
       return true
     }
@@ -1687,12 +1689,12 @@ extension VMKVStorage {
   private func _allFileMoveToTrash() -> Bool {
     let uuidString = UUID().uuidString
     
-    let dataUrl = URL(fileURLWithPath: self._dataPath)
-    let tmpTrashUrl = URL(fileURLWithPath: self._trashPath).appendingPathComponent(uuidString)
+    let dataPath = self._dataPath
+    let tmpTrashPath = self._trashPath.appendingPathComponent(uuidString)
     
     do {
-      try FileManager.default.moveItem(at: dataUrl, to: tmpTrashUrl)
-      try FileManager.default.createDirectory(at: dataUrl, withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.moveItem(atPath: dataPath, toPath: tmpTrashPath)
+      try FileManager.default.createDirectory(atPath: dataPath, withIntermediateDirectories: true, attributes: nil)
       
       return true
     }
@@ -1702,16 +1704,22 @@ extension VMKVStorage {
   }
   
   private func _emptyTrashInBackground() {
-    let trashUrl = URL(fileURLWithPath: self._trashPath)
+    let trashPath = self._trashPath
     
     self._trashQueue.async {
       let fileManager = FileManager.default
       
-      let directoryContents = try? fileManager.contentsOfDirectory(atPath: trashUrl.absoluteString)
-      (directoryContents ?? []).forEach {
-        let contentTrashUrl = trashUrl.appendingPathComponent($0)
+      do {
+        let directoryContents = try fileManager.contentsOfDirectory(atPath: trashPath)
         
-        try? fileManager.removeItem(at: contentTrashUrl)
+        directoryContents.forEach {
+          let contentTrashPath = trashPath.appendingPathComponent($0)
+          
+          try? fileManager.removeItem(atPath: contentTrashPath)
+        }
+      }
+      catch {
+        
       }
     }
   }
