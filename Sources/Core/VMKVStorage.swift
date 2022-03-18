@@ -5,10 +5,9 @@
 //  Created by Max on 2022/3/13.
 //
 
-#if canImport(UIKit) && canImport(QuartzCore) && canImport(CSQLite)
+#if canImport(Foundation) && canImport(CSQLite)
 
-import UIKit
-import QuartzCore
+import Foundation
 import CSQLite
 
 internal enum VMKVStorageType: Int {
@@ -159,12 +158,14 @@ internal class VMKVStorage: NSObject {
     self._dbClose()
   }
   
-  func itemExists(forKey key: String) -> Bool {
-    guard !key.isEmpty else {
+  func itemExists(forKey key: String?) -> Bool {
+    guard let key = key, !key.isEmpty else {
       return false
     }
     
-    return self._dbGetItemCount(withKey: key) > 0
+    let result = self._dbGetItemCount(withKey: key) > 0
+    
+    return result
   }
   
   @discardableResult
@@ -187,7 +188,7 @@ internal class VMKVStorage: NSObject {
       return false
     }
     
-    if let filename = filename {
+    if let filename = filename, !filename.isEmpty {
       let writeResult = self._fileWrite(withName: filename, data: value)
       if !writeResult {
         return writeResult
@@ -214,8 +215,8 @@ internal class VMKVStorage: NSObject {
     }
   }
   
-  func getItem(forKey key: String) -> VMKVStorageItem? {
-    guard !key.isEmpty else {
+  func getItem(forKey key: String?) -> VMKVStorageItem? {
+    guard let key = key, !key.isEmpty else {
       return nil
     }
     
@@ -237,16 +238,16 @@ internal class VMKVStorage: NSObject {
     return item
   }
   
-  func getItemInfo(forKey key: String) -> VMKVStorageItem? {
-    guard !key.isEmpty else {
+  func getItemInfo(forKey key: String?) -> VMKVStorageItem? {
+    guard let key = key, !key.isEmpty else {
       return nil
     }
     
     return self._dbGetItem(withKey: key, excludeInlineData: true)
   }
   
-  func getItemValue(forKey key: String) -> Data? {
-    guard !key.isEmpty else {
+  func getItemValue(forKey key: String?) -> Data? {
+    guard let key = key, !key.isEmpty else {
       return nil
     }
     
@@ -285,8 +286,8 @@ internal class VMKVStorage: NSObject {
     return itemValue
   }
   
-  func getItems(forKeys keys: [String]) -> [VMKVStorageItem]? {
-    guard !keys.isEmpty else {
+  func getItems(forKeys keys: [String]?) -> [VMKVStorageItem]? {
+    guard let keys = keys, !keys.isEmpty else {
       return nil
     }
     
@@ -296,15 +297,16 @@ internal class VMKVStorage: NSObject {
       items.enumerated().forEach { (indices, _) in
         if let filename = items[indices].filename {
           items[indices].value = self._fileRead(withName: filename)
+          
           if items[indices].value == nil {
             if let key = items[indices].key {
               self._dbDeleteItem(withKey: key)
             }
-            
-            items.remove(at: indices)
           }
         }
       }
+      
+      items.removeAll(where: { $0.value == nil })
     }
     
     if !items.isEmpty {
@@ -314,15 +316,19 @@ internal class VMKVStorage: NSObject {
     return items
   }
   
-  func getItemInfos(forKeys keys: [String]) -> [VMKVStorageItem]? {
-    guard !keys.isEmpty else {
+  func getItemInfos(forKeys keys: [String]?) -> [VMKVStorageItem]? {
+    guard let keys = keys, !keys.isEmpty else {
       return nil
     }
     
     return self._dbGetItems(withKeys: keys, excludeInlineData: true)
   }
   
-  func getItemValues(forKeys keys: [String]) -> [String: Data]? {
+  func getItemValues(forKeys keys: [String]?) -> [String: Data]? {
+    guard let keys = keys, !keys.isEmpty else {
+      return nil
+    }
+    
     let items = self.getItems(forKeys: keys)
     
     let kv = items?.reduce(into: [String: Data]()) {
@@ -335,8 +341,8 @@ internal class VMKVStorage: NSObject {
   }
   
   @discardableResult
-  func removeItem(forKey key: String) -> Bool {
-    guard !key.isEmpty else {
+  func removeItem(forKey key: String?) -> Bool {
+    guard let key = key, !key.isEmpty else {
       return false
     }
     
@@ -352,14 +358,14 @@ internal class VMKVStorage: NSObject {
         break
     }
     
-    let result = self._dbDeleteItem(withKey: key)
+    let deleteItemResult = self._dbDeleteItem(withKey: key)
     
-    return result
+    return deleteItemResult
   }
   
   @discardableResult
-  func removeItems(forKeys keys: [String]) -> Bool {
-    guard !keys.isEmpty else {
+  func removeItems(forKeys keys: [String]?) -> Bool {
+    guard let keys = keys, !keys.isEmpty else {
       return false
     }
     
@@ -377,9 +383,9 @@ internal class VMKVStorage: NSObject {
         break
     }
     
-    let result = self._dbDeleteItems(withKeys: keys)
+    let deleteItemsResult = self._dbDeleteItems(withKeys: keys)
     
-    return result
+    return deleteItemsResult
   }
   
   @discardableResult
@@ -408,10 +414,10 @@ internal class VMKVStorage: NSObject {
           break
       }
       
-      if self._dbDeleteItemsLargerThanSize(size) {
+      result = self._dbDeleteItemsLargerThanSize(size)
+      
+      if result {
         self._dbCheckpoint()
-        
-        result = true
       }
     }
     
@@ -444,10 +450,10 @@ internal class VMKVStorage: NSObject {
           break
       }
       
-      if self._dbDeleteItemsEarlierThanTime(time) {
+      result = self._dbDeleteItemsEarlierThanTime(time)
+      
+      if result {
         self._dbCheckpoint()
-        
-        result = true
       }
     }
     
@@ -461,7 +467,9 @@ internal class VMKVStorage: NSObject {
     }
     
     guard maxSize > 0 else {
-      return self.removeAllItems()
+      let result = self.removeAllItems()
+      
+      return result
     }
     
     var totalItemSize = self._dbGetTotalItemSize()
@@ -474,9 +482,9 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    var result: Bool = false
-    
     var deletableItems: [VMKVStorageItem]!
+    
+    var result: Bool = false
     
     repeat {
       deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
@@ -514,7 +522,9 @@ internal class VMKVStorage: NSObject {
     }
     
     guard maxCount > 0 else {
-      return self.removeAllItems()
+      let result = self.removeAllItems()
+      
+      return result
     }
     
     var totalItemCount = self._dbGetTotalItemCount()
@@ -527,9 +537,9 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    var result: Bool = false
-    
     var deletableItems: [VMKVStorageItem]!
+    
+    var result: Bool = false
     
     repeat {
       deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
@@ -562,21 +572,17 @@ internal class VMKVStorage: NSObject {
   
   @discardableResult
   func removeAllItems() -> Bool {
-    guard self._dbClose() else {
+    let closeResult = self._dbClose()
+    guard closeResult else {
       return false
     }
     
     self._reset()
     
-    guard self._dbOpen() else {
-      return false
-    }
+    let openResult = self._dbOpen()
+    let initializeResult = self._dbInitialize()
     
-    guard self._dbInitialize() else {
-      return false
-    }
-    
-    return true
+    return openResult && initializeResult
   }
   
   func removeAllItems(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
@@ -590,9 +596,9 @@ internal class VMKVStorage: NSObject {
     
     var left = totalItemCount
     
-    var result: Bool = false
-    
     var deletableItems: [VMKVStorageItem]!
+    
+    var result: Bool = false
     
     repeat {
       deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 32) ?? []
@@ -626,11 +632,15 @@ internal class VMKVStorage: NSObject {
   }
   
   func itemsCount() -> Int {
-    return self._dbGetTotalItemCount()
+    let result = self._dbGetTotalItemCount()
+    
+    return result
   }
   
   func itemsSize() -> Int {
-    return self._dbGetTotalItemSize()
+    let result = self._dbGetTotalItemSize()
+    
+    return result
   }
 }
 
@@ -638,15 +648,9 @@ extension VMKVStorage {
   
   // MARK: - private
   private func _reset() {
-    let pathUrl = URL(fileURLWithPath: self.path)
-    
-    let dbPathUrl = pathUrl.appendingPathComponent(self._dbFilename)
-    let dbWALPathUrl = pathUrl.appendingPathComponent(self._dbWALFilename)
-    let dbWALIndexPathUrl = pathUrl.appendingPathComponent(self._dbWALIndexFilename)
-    
-    try? FileManager.default.removeItem(at: dbPathUrl)
-    try? FileManager.default.removeItem(at: dbWALPathUrl)
-    try? FileManager.default.removeItem(at: dbWALIndexPathUrl)
+    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbFilename))
+    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbWALFilename))
+    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbWALIndexFilename))
     
     self._allFileMoveToTrash()
     self._emptyTrashInBackground()
@@ -718,15 +722,15 @@ extension VMKVStorage {
       return true
     }
     
-    var needsRetry = false
-    var stmtFinalized = false
-    
-    var closeCode: Int32 = 0
-    
     if self._dbStmtCache != nil {
       self._dbStmtCache!.removeAll()
     }
     self._dbStmtCache = nil
+    
+    var needsRetry = false
+    var stmtFinalized = false
+    
+    var closeCode: Int32 = 0
     
     repeat {
       needsRetry = false
@@ -736,8 +740,9 @@ extension VMKVStorage {
         if !stmtFinalized {
           stmtFinalized = true
           
-          while let stmt = sqlite3_next_stmt(self._db!, nil) {
-            sqlite3_finalize(stmt)
+          while let nextStmt = sqlite3_next_stmt(self._db!, nil) {
+            sqlite3_finalize(nextStmt)
+            
             needsRetry = true
           }
         }
@@ -763,7 +768,16 @@ extension VMKVStorage {
     let effectiveRetryCount = self._dbOpenFailCount < self._dbOpenRetryMaxCount
     let effectiveRetryTimeInterval = ProcessInfo.processInfo.systemUptime - self._dbOpenFailLastTime > self._dbOpenRetryTimeInterval
     
-    return effectiveRetryCount && effectiveRetryTimeInterval ? self._dbOpen() && self._dbInitialize() : false
+    var result: Bool = false
+    
+    if effectiveRetryCount && effectiveRetryTimeInterval {
+      let openResult = self._dbOpen()
+      let initializeResult = self._dbInitialize()
+      
+      result = openResult && initializeResult
+    }
+    
+    return result
   }
   
   private func _dbCheckpoint() {
@@ -861,19 +875,14 @@ extension VMKVStorage {
     
     sqlite3_bind_text(stmt!, 1, key, -1, nil)
     
-    if let filename = filename, !filename.isEmpty {
+    if filename == nil || filename!.isEmpty {
       sqlite3_bind_blob(stmt!, 2, [UInt8](value), Int32([UInt8](value).count), nil)
     }
     else {
       sqlite3_bind_blob(stmt!, 2, nil, 0, nil)
     }
     
-    if let extendedData = extendedData {
-      sqlite3_bind_blob(stmt!, 3, [UInt8](extendedData), Int32([UInt8](extendedData).count), nil)
-    }
-    else {
-      sqlite3_bind_blob(stmt!, 3, nil, 0, nil)
-    }
+    sqlite3_bind_blob(stmt!, 3, extendedData.flatMap { [UInt8]($0) }, Int32(extendedData.flatMap { [UInt8]($0).count } ?? 0), nil)
     
     sqlite3_bind_text(stmt!, 4, filename, -1, nil)
     
@@ -1028,6 +1037,7 @@ extension VMKVStorage {
       """
     
     var stmt: OpaquePointer? = nil
+    
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
@@ -1039,9 +1049,9 @@ extension VMKVStorage {
     
     self._dbBindJoinedKeys(keys, stmt: stmt!, fromIndex: 1)
     
-    var stepCode: Int32 = 0
-    
     var items: [VMKVStorageItem]? = []
+    
+    var stepCode: Int32 = 0
     
     repeat {
       stepCode = sqlite3_step(stmt!)
@@ -1083,7 +1093,7 @@ extension VMKVStorage {
     let extendedDataLength = Int(sqlite3_column_bytes(stmt, iCol))
     let extendedData = sqlite3_column_blob(stmt, iCol++).flatMap { extendedDataLength > 0 ? Data(bytes: $0, count: extendedDataLength) : nil }
     
-    let filename = sqlite3_column_text(stmt, iCol++).flatMap { $0.pointee != 0 ? String(cString: $0) : nil }
+    let filename = sqlite3_column_text(stmt, iCol++).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
     
     let size = Int(sqlite3_column_int(stmt, iCol++))
     
@@ -1116,9 +1126,9 @@ extension VMKVStorage {
     
     sqlite3_bind_int(stmt!, 1, limit)
     
-    var stepCode: Int32 = 0
-    
     var itemSizeInfos: [VMKVStorageItem]? = []
+    
+    var stepCode: Int32 = 0
     
     repeat {
       stepCode = sqlite3_step(stmt!)
@@ -1126,7 +1136,7 @@ extension VMKVStorage {
       if stepCode == SQLITE_ROW {
         let key = sqlite3_column_text(stmt, 0).flatMap { String(cString: $0) }
         
-        let filename = sqlite3_column_text(stmt, 1).flatMap { $0.pointee != 0 ? String(cString: $0) : nil }
+        let filename = sqlite3_column_text(stmt, 1).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
         
         let size = Int(sqlite3_column_int(stmt, 2))
         
@@ -1178,7 +1188,7 @@ extension VMKVStorage {
     if stepCode == SQLITE_ROW {
       let inlineDataLength = Int(sqlite3_column_bytes(stmt!, 0))
       
-      value = sqlite3_column_blob(stmt, 0).flatMap { inlineDataLength > 0 ? Data(bytes: $0, count: inlineDataLength) : nil }
+      value = sqlite3_column_blob(stmt!, 0).flatMap { inlineDataLength > 0 ? Data(bytes: $0, count: inlineDataLength) : nil }
     }
     else if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
@@ -1211,7 +1221,7 @@ extension VMKVStorage {
     let stepCode = sqlite3_step(stmt!)
     
     if stepCode == SQLITE_ROW {
-      filename = sqlite3_column_text(stmt!, 0).flatMap { $0.pointee != 0 ? String(cString: $0) : nil }
+      filename = sqlite3_column_text(stmt!, 0).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
     }
     else if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
@@ -1237,6 +1247,7 @@ extension VMKVStorage {
       """
     
     var stmt: OpaquePointer? = nil
+    
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
@@ -1248,15 +1259,15 @@ extension VMKVStorage {
     
     self._dbBindJoinedKeys(keys, stmt: stmt!, fromIndex: 1)
     
-    var stepCode: Int32 = 0
-    
     var filenames: [String]? = []
+    
+    var stepCode: Int32 = 0
     
     repeat {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        let filename = sqlite3_column_text(stmt!, 0).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
         if let filename = filename {
           filenames?.append(filename)
         }
@@ -1299,15 +1310,15 @@ extension VMKVStorage {
     
     sqlite3_bind_int(stmt!, 1, Int32(size))
     
-    var stepCode: Int32 = 0
-    
     var filenames: [String]? = []
+    
+    var stepCode: Int32 = 0
     
     repeat {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        let filename = sqlite3_column_text(stmt!, 0).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
         if let filename = filename {
           filenames?.append(filename)
         }
@@ -1348,15 +1359,15 @@ extension VMKVStorage {
     
     sqlite3_bind_int(stmt!, 1, time)
     
-    var stepCode: Int32 = 0
-    
     var filenames: [String]? = []
+    
+    var stepCode: Int32 = 0
     
     repeat {
       stepCode = sqlite3_step(stmt!)
       
       if stepCode == SQLITE_ROW {
-        let filename = sqlite3_column_text(stmt!, 0).flatMap({ $0.pointee != 0 ? String(cString: $0) : nil })
+        let filename = sqlite3_column_text(stmt!, 0).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
         if let filename = filename {
           filenames?.append(filename)
         }
@@ -1486,6 +1497,7 @@ extension VMKVStorage {
       """
     
     var stmt: OpaquePointer? = nil
+    
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
@@ -1609,18 +1621,17 @@ extension VMKVStorage {
       return false
     }
     
-    let timestamp = Int32(Date().timeIntervalSince1970)
-    
     let sql = """
       update
         kirogi
       set
-        last_access_timestamp = \(timestamp)
+        last_access_timestamp = \(Int32(Date().timeIntervalSince1970))
       where
         key in (\(self._dbJoinedKeys(keys)));
       """
     
     var stmt: OpaquePointer? = nil
+    
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
