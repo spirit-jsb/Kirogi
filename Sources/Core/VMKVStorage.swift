@@ -59,6 +59,36 @@ internal class VMKVStorageItem: NSObject {
   }
 }
 
+/*
+  File:
+  /Path/
+       /kirogi.sqlite
+       /kirogi.sqlite-wal
+       /kirogi.sqlite-shm
+       /data/
+            /5cb41d04007f8d688a11903ac16451d1
+       /trash/
+             /unused_file_or_folder
+
+  SQL:
+  pragma journal_mode = wal;
+
+  pragma synchronous = normal;
+
+  create table if not exists kirogi (
+    key text,
+    inline_data blob,
+    extended_data blob,
+    filename text,
+    size integer,
+    last_modification_timestamp integer,
+    last_access_timestamp integer,
+    primary key(key)
+  );
+
+  create index if not exists last_access_time_idx on kirogi(last_access_timestamp);
+ */
+
 internal class VMKVStorage: NSObject {
   
   private(set) var path: String
