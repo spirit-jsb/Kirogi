@@ -678,7 +678,7 @@ extension VMKVStorage {
       self._dbStmtCache = nil
       
       self._dbOpenFailCount += 1
-      self._dbOpenFailLastTime = CACurrentMediaTime()
+      self._dbOpenFailLastTime = ProcessInfo.processInfo.systemUptime
       
       if self.errorLogsEnabled {
         print("\(#function) line:\(#line) sqlite open failed (\(openCode)).")
@@ -761,7 +761,7 @@ extension VMKVStorage {
     }
     
     let effectiveRetryCount = self._dbOpenFailCount < self._dbOpenRetryMaxCount
-    let effectiveRetryTimeInterval = CACurrentMediaTime() - self._dbOpenFailLastTime > self._dbOpenRetryTimeInterval
+    let effectiveRetryTimeInterval = ProcessInfo.processInfo.systemUptime - self._dbOpenFailLastTime > self._dbOpenRetryTimeInterval
     
     return effectiveRetryCount && effectiveRetryTimeInterval ? self._dbOpen() && self._dbInitialize() : false
   }
