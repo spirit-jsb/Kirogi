@@ -13,7 +13,7 @@ let package = Package(
   ],
   targets: [
     .systemLibrary(name: "CSQLite", path: "Sources/CSQLite"),
-    .target(name: "Kirogi", dependencies: ["CSQLite"], path: "Sources/Core"),
+    .target(name: "Kirogi", dependencies: ["CSQLite"], path: "Sources/Core", linkerSettings: [.unsafeFlags(["-Xlinker", "-no_application_extension"])]),
     .testTarget(name: "KirogiTests", dependencies: ["Kirogi"], path: "Tests"),
   ],
   swiftLanguageVersions: [
