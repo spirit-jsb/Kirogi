@@ -11,6 +11,18 @@ import Foundation
 import UIKit
 import CSQLite
 
+private func _VMSharedApplication() -> UIApplication? {
+  let UIApplicationClass: AnyClass? = NSClassFromString("UIApplication")
+  
+  guard UIApplicationClass != nil && UIApplicationClass!.responds(to: Selector(("sharedApplication"))) else {
+    return nil
+  }
+  
+  let application = UIApplication.perform(Selector(("sharedApplication"))).takeUnretainedValue() as? UIApplication
+  
+  return application
+}
+
 internal enum VMKVStorageType: Int {
   case sqlite
   case file
@@ -58,18 +70,6 @@ internal class VMKVStorageItem: NSObject {
     self.lastModificationTimestamp = 0
     self.lastAccessTimestamp = 0
   }
-}
-
-private func _VMSharedApplication() -> UIApplication? {
-  let UIApplicationClass: AnyClass? = NSClassFromString("UIApplication")
-  
-  guard UIApplicationClass != nil && UIApplicationClass!.responds(to: Selector(("sharedApplication"))) else {
-    return nil
-  }
-  
-  let application = UIApplication.perform(Selector(("sharedApplication"))).takeUnretainedValue() as? UIApplication
-  
-  return application
 }
 
 /// File:
@@ -133,7 +133,13 @@ internal class VMKVStorage: NSObject {
   private var _dbOpenFailCount: UInt = 0
   private var _dbOpenFailLastTime: TimeInterval = 0.0
   
-  init?(path: String?, type: VMKVStorageType) {
+  static func initialize(path: String?, type: VMKVStorageType) -> VMKVStorage? {
+    let kvStorage = VMKVStorage(path: path, type: type)
+    
+    return kvStorage
+  }
+  
+  private init?(path: String?, type: VMKVStorageType) {
     guard let path = path, !path.isEmpty else {
       print("VMKVStorage init error: invalid path: [\(String(describing: path))].")
       
