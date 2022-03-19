@@ -195,90 +195,92 @@ private class _VMLinkedMap: NSObject {
   }
 }
 
-public class VMMemoryCache: NSObject {
+internal class VMMemoryCache: NSObject {
   
-  public var name: String?
+  var name: String?
   
-  public var totalCost: UInt {
-    pthread_mutex_lock(&self._lock)
-    
-    let totalCost = self._lru._totalCost
-    
-    pthread_mutex_unlock(&self._lock)
+  var totalCost: UInt {
+    let totalCost: UInt = self._lock.locked {
+      let totalCost = self._lru._totalCost
+      
+      return totalCost
+    }
     
     return totalCost
   }
   
-  public var totalCount: UInt {
-    pthread_mutex_lock(&self._lock)
-    
-    let totalCount = self._lru._totalCount
-    
-    pthread_mutex_unlock(&self._lock)
+  var totalCount: UInt {
+    let totalCount: UInt = self._lock.locked {
+      let totalCount = self._lru._totalCount
+      
+      return totalCount
+    }
     
     return totalCount
   }
   
-  public var costLimit: UInt
+  var costLimit: UInt
   
-  public var countLimit: UInt
+  var countLimit: UInt
   
-  public var ageLimit: TimeInterval
+  var ageLimit: TimeInterval
   
-  public var autoTrimInterval: TimeInterval
+  var autoTrimInterval: TimeInterval
   
-  public var shouldRemoveAllOnMemoryWarning: Bool
+  var shouldRemoveAllOnMemoryWarning: Bool
   
-  public var shouldRemoveAllWhenEnterBackground: Bool
+  var shouldRemoveAllWhenEnterBackground: Bool
   
-  public var releaseOnMainThread: Bool {
+  var releaseOnMainThread: Bool {
     get {
-      pthread_mutex_lock(&self._lock)
-      
-      let releaseOnMainThread = self._lru._releaseOnMainThread
-      
-      pthread_mutex_unlock(&self._lock)
+      let releaseOnMainThread: Bool = self._lock.locked {
+        let releaseOnMainThread = self._lru._releaseOnMainThread
+        
+        return releaseOnMainThread
+      }
       
       return releaseOnMainThread
     }
     set {
-      pthread_mutex_lock(&self._lock)
-      
-      self._lru._releaseOnMainThread = newValue
-      
-      pthread_mutex_unlock(&self._lock)
+      self._lock.locked {
+        self._lru._releaseOnMainThread = newValue
+      }
     }
   }
   
-  public var releaseAsynchronously: Bool {
+  var releaseAsynchronously: Bool {
     get {
-      pthread_mutex_lock(&self._lock)
-      
-      let releaseAsynchronously = self._lru._releaseAsynchronously
-      
-      pthread_mutex_unlock(&self._lock)
+      let releaseAsynchronously: Bool = self._lock.locked {
+        let releaseAsynchronously = self._lru._releaseAsynchronously
+        
+        return releaseAsynchronously
+      }
       
       return releaseAsynchronously
     }
     set {
-      pthread_mutex_lock(&self._lock)
-      
-      self._lru._releaseAsynchronously = newValue
-      
-      pthread_mutex_unlock(&self._lock)
+      self._lock.locked {
+        self._lru._releaseAsynchronously = newValue
+      }
     }
   }
   
   private let _queue: DispatchQueue
   
-  private var _lock: pthread_mutex_t = pthread_mutex_t()
+  private let _lock: NSLock
   
   private var _lru: _VMLinkedMap
   
-  public override init() {
-    self.costLimit = UInt.max
-    self.countLimit = UInt.max
-    self.ageLimit = TimeInterval.greatestFiniteMagnitude
+  static func initialize() -> VMMemoryCache {
+    let memoryCache = VMMemoryCache()
+    
+    return memoryCache
+  }
+  
+  private override init() {
+    self.costLimit = .max
+    self.countLimit = .max
+    self.ageLimit = .greatestFiniteMagnitude
     
     self.autoTrimInterval = 5.0
     
@@ -288,7 +290,7 @@ public class VMMemoryCache: NSObject {
     
     self._queue = DispatchQueue(label: "com.max.jian.Kirogi.cache.memory")
     
-    pthread_mutex_init(&self._lock, nil)
+    self._lock = NSLock()
     
     self._lru = _VMLinkedMap()
     
@@ -308,29 +310,27 @@ public class VMMemoryCache: NSObject {
     NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
     
     self._lru.removeAll()
-    
-    pthread_mutex_destroy(&self._lock)
   }
   
-  public func contains(forKey key: AnyHashable?) -> Bool {
+  func contains(forKey key: AnyHashable?) -> Bool {
     guard let key = key else {
       return false
     }
     
-    pthread_mutex_lock(&self._lock)
-    
-    let containsResult = self._lru._dict.contains(where: { $0.key == key })
-    
-    pthread_mutex_unlock(&self._lock)
+    let containsResult: Bool = self._lock.locked {
+      let containsResult = self._lru._dict.contains(where: { $0.key == key })
+      
+      return containsResult
+    }
     
     return containsResult
   }
   
-  public func setObject(_ object: Any?, forKey key: AnyHashable?) {
+  func setObject(_ object: Any?, forKey key: AnyHashable?) {
     self.setObject(object, forKey: key, withCost: 0)
   }
   
-  public func setObject(_ object: Any?, forKey key: AnyHashable?, withCost cost: UInt) {
+  func setObject(_ object: Any?, forKey key: AnyHashable?, withCost cost: UInt) {
     guard let key = key else {
       return
     }
@@ -341,119 +341,116 @@ public class VMMemoryCache: NSObject {
       return
     }
     
-    pthread_mutex_lock(&self._lock)
-    
-    let nowTime = ProcessInfo.processInfo.systemUptime
-    
-    var node = self._lru._dict[key]
-    if node != nil {
-      self._lru._totalCost -= node!._cost
-      self._lru._totalCost += cost
+    self._lock.locked {
+      let nowTime = ProcessInfo.processInfo.systemUptime
       
-      node!._value = object
-      
-      node!._cost = cost
-      
-      node!._time = nowTime
-      
-      self._lru.bringNodeToHead(node!)
-    }
-    else {
-      node = _VMLinkedMapNode(prev: nil, next: nil, key: key, value: object, cost: cost, time: nowTime)
-      
-      self._lru.insertNodeAtHead(node!)
-    }
-    
-    if self._lru._totalCost > self.costLimit {
-      self._queue.async {
-        self.trim(forCost: self.costLimit)
+      var node = self._lru._dict[key]
+      if node != nil {
+        self._lru._totalCost -= node!._cost
+        self._lru._totalCost += cost
+        
+        node!._value = object
+        
+        node!._cost = cost
+        
+        node!._time = nowTime
+        
+        self._lru.bringNodeToHead(node!)
       }
-    }
-    
-    if self._lru._totalCount > self.countLimit, let tailNode = self._lru.removeTail() {
-      if self._lru._releaseAsynchronously {
-        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
-        releaseQueue.async {
-          _ = tailNode.classForCoder
+      else {
+        node = _VMLinkedMapNode(prev: nil, next: nil, key: key, value: object, cost: cost, time: nowTime)
+        
+        self._lru.insertNodeAtHead(node!)
+      }
+      
+      if self._lru._totalCost > self.costLimit {
+        self._queue.async {
+          self.trim(forCost: self.costLimit)
         }
       }
-      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
-        DispatchQueue.main.async {
-          _ = tailNode.classForCoder
+      
+      if self._lru._totalCount > self.countLimit, let tailNode = self._lru.removeTail() {
+        if self._lru._releaseAsynchronously {
+          let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+          releaseQueue.async {
+            _ = tailNode.classForCoder
+          }
+        }
+        else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+          DispatchQueue.main.async {
+            _ = tailNode.classForCoder
+          }
         }
       }
     }
-    
-    pthread_mutex_unlock(&self._lock)
   }
   
-  public func object(forKey key: AnyHashable?) -> Any? {
+  func object(forKey key: AnyHashable?) -> Any? {
     guard let key = key else {
       return nil
     }
     
-    pthread_mutex_lock(&self._lock)
-    
-    let node = self._lru._dict[key]
-    if node != nil {
-      node!._time = ProcessInfo.processInfo.systemUptime
+    let objectResult: Any? = self._lock.locked {
+      let node = self._lru._dict[key]
+      if node != nil {
+        node!._time = ProcessInfo.processInfo.systemUptime
+        
+        self._lru.bringNodeToHead(node!)
+      }
       
-      self._lru.bringNodeToHead(node!)
+      let objectResult = node != nil ? node!._value : nil
+      
+      return objectResult
     }
     
-    let value = node != nil ? node!._value : nil
-    
-    pthread_mutex_unlock(&self._lock)
-    
-    return value
+    return objectResult
   }
   
-  public func removeObject(forKey key: AnyHashable?) {
+  func removeObject(forKey key: AnyHashable?) {
     guard let key = key else {
       return
     }
     
-    pthread_mutex_lock(&self._lock)
-    
-    let node = self._lru._dict[key]
-    if node != nil {
-      self._lru.removeNode(node!)
-      
-      if self._lru._releaseAsynchronously {
-        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
-        releaseQueue.async {
-          _ = node!.classForCoder
+    self._lock.locked {
+      let node = self._lru._dict[key]
+      if node != nil {
+        self._lru.removeNode(node!)
+        
+        if self._lru._releaseAsynchronously {
+          let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+          releaseQueue.async {
+            _ = node!.classForCoder
+          }
         }
-      }
-      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
-        DispatchQueue.main.async {
-          _ = node!.classForCoder
+        else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+          DispatchQueue.main.async {
+            _ = node!.classForCoder
+          }
         }
       }
     }
-    
-    pthread_mutex_unlock(&self._lock)
   }
   
-  public func removeAllObjects() {
-    pthread_mutex_lock(&self._lock)
-    
-    self._lru.removeAll()
-    
-    pthread_mutex_unlock(&self._lock)
+  func removeAllObjects() {
+    self._lock.locked {
+      self._lru.removeAll()
+    }
   }
   
-  public func trim(forCost costLimit: UInt) {
+  func trim(forCost costLimit: UInt) {
     self._trim(forCost: costLimit)
   }
   
-  public func trim(forCount countLimit: UInt) {
+  func trim(forCount countLimit: UInt) {
     self._trim(forCount: countLimit)
   }
   
-  public func trim(forAge ageLimit: TimeInterval) {
+  func trim(forAge ageLimit: TimeInterval) {
     self._trim(forAge: ageLimit)
   }
+}
+
+extension VMMemoryCache {
   
   private func _trimRecursively() {
     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + .nanoseconds(Int(self.autoTrimInterval * Double(NSEC_PER_SEC)))) { [weak self] in
@@ -476,17 +473,15 @@ public class VMMemoryCache: NSObject {
   
   private func _trim(forCost costLimit: UInt) {
     var trimNotFinished = true
-    pthread_mutex_lock(&self._lock)
-    
-    if costLimit == 0 {
-      self._lru.removeAll()
-      trimNotFinished = false
+    self._lock.locked {
+      if costLimit == 0 {
+        self._lru.removeAll()
+        trimNotFinished = false
+      }
+      else if self._lru._totalCost <= costLimit {
+        trimNotFinished = false
+      }
     }
-    else if self._lru._totalCost <= costLimit {
-      trimNotFinished = false
-    }
-    
-    pthread_mutex_unlock(&self._lock)
     
     guard trimNotFinished else {
       return
@@ -494,22 +489,20 @@ public class VMMemoryCache: NSObject {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      let tryLockResult = pthread_mutex_trylock(&self._lock)
-      
-      if tryLockResult == 0 {
-        if self._lru._totalCost > costLimit {
-          if let tailNode = self._lru.removeTail() {
-            holder.append(tailNode)
+      self._lock.tryLocked { (tryLockResult) in
+        if tryLockResult {
+          if self._lru._totalCost > costLimit {
+            if let tailNode = self._lru.removeTail() {
+              holder.append(tailNode)
+            }
+          }
+          else {
+            trimNotFinished = false
           }
         }
         else {
-          trimNotFinished = false
+          usleep(10 * 1000) // sleep 10 ms
         }
-        
-        pthread_mutex_unlock(&self._lock)
-      }
-      else {
-        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
@@ -523,17 +516,15 @@ public class VMMemoryCache: NSObject {
   
   private func _trim(forCount countLimit: UInt) {
     var trimNotFinished = true
-    pthread_mutex_lock(&self._lock)
-    
-    if countLimit == 0 {
-      self._lru.removeAll()
-      trimNotFinished = false
+    self._lock.locked {
+      if countLimit == 0 {
+        self._lru.removeAll()
+        trimNotFinished = false
+      }
+      else if self._lru._totalCount <= countLimit {
+        trimNotFinished = false
+      }
     }
-    else if self._lru._totalCount <= countLimit {
-      trimNotFinished = false
-    }
-    
-    pthread_mutex_unlock(&self._lock)
     
     guard trimNotFinished else {
       return
@@ -541,22 +532,20 @@ public class VMMemoryCache: NSObject {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      let tryLockResult = pthread_mutex_trylock(&self._lock)
-      
-      if tryLockResult == 0 {
-        if self._lru._totalCount > countLimit {
-          if let tailNode = self._lru.removeTail() {
-            holder.append(tailNode)
+      self._lock.tryLocked { (tryLockResult) in
+        if tryLockResult {
+          if self._lru._totalCount > countLimit {
+            if let tailNode = self._lru.removeTail() {
+              holder.append(tailNode)
+            }
+          }
+          else {
+            trimNotFinished = false
           }
         }
         else {
-          trimNotFinished = false
+          usleep(10 * 1000) // sleep 10 ms
         }
-        
-        pthread_mutex_unlock(&self._lock)
-      }
-      else {
-        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
@@ -572,17 +561,15 @@ public class VMMemoryCache: NSObject {
     let nowTime = ProcessInfo.processInfo.systemUptime
     
     var trimNotFinished = true
-    pthread_mutex_lock(&self._lock)
-    
-    if ageLimit <= 0 {
-      self._lru.removeAll()
-      trimNotFinished = false
+    self._lock.locked {
+      if ageLimit <= 0 {
+        self._lru.removeAll()
+        trimNotFinished = false
+      }
+      else if (self._lru._tail == nil || (nowTime - self._lru._tail!._time) <= ageLimit) {
+        trimNotFinished = false
+      }
     }
-    else if (self._lru._tail == nil || (nowTime - self._lru._tail!._time) <= ageLimit) {
-      trimNotFinished = false
-    }
-    
-    pthread_mutex_unlock(&self._lock)
     
     guard trimNotFinished else {
       return
@@ -590,22 +577,20 @@ public class VMMemoryCache: NSObject {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      let tryLockResult = pthread_mutex_trylock(&self._lock)
-      
-      if tryLockResult == 0 {
-        if (self._lru._tail != nil && (nowTime - self._lru._tail!._time) > ageLimit) {
-          if let tailNode = self._lru.removeTail() {
-            holder.append(tailNode)
+      self._lock.tryLocked { (tryLockResult) in
+        if tryLockResult {
+          if (self._lru._tail != nil && (nowTime - self._lru._tail!._time) > ageLimit) {
+            if let tailNode = self._lru.removeTail() {
+              holder.append(tailNode)
+            }
+          }
+          else {
+            trimNotFinished = false
           }
         }
         else {
-          trimNotFinished = false
+          usleep(10 * 1000) // sleep 10 ms
         }
-        
-        pthread_mutex_unlock(&self._lock)
-      }
-      else {
-        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
@@ -616,6 +601,9 @@ public class VMMemoryCache: NSObject {
       }
     }
   }
+}
+
+extension VMMemoryCache {
   
   @objc private func _appDidReceiveMemoryWarning(_ notification: Notification) {
     if self.shouldRemoveAllOnMemoryWarning {
