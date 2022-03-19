@@ -59,35 +59,33 @@ internal class VMKVStorageItem: NSObject {
   }
 }
 
-/*
-  File:
-  /Path/
-       /kirogi.sqlite
-       /kirogi.sqlite-wal
-       /kirogi.sqlite-shm
-       /data/
-            /5cb41d04007f8d688a11903ac16451d1
-       /trash/
-             /unused_file_or_folder
-
-  SQL:
-  pragma journal_mode = wal;
-
-  pragma synchronous = normal;
-
-  create table if not exists kirogi (
-    key text,
-    inline_data blob,
-    extended_data blob,
-    filename text,
-    size integer,
-    last_modification_timestamp integer,
-    last_access_timestamp integer,
-    primary key(key)
-  );
-
-  create index if not exists last_access_time_idx on kirogi(last_access_timestamp);
- */
+/// File:
+/// /Path/
+///      /kirogi.sqlite
+///      /kirogi.sqlite-wal
+///      /kirogi.sqlite-shm
+///      /data/
+///           /5cb41d04007f8d688a11903ac16451d1
+///      /trash/
+///            /unused_file_or_folder
+///
+/// SQL:
+/// pragma journal_mode = wal;
+///
+/// pragma synchronous = normal;
+///
+/// create table if not exists kirogi (
+///   key text,
+///   inline_data blob,
+///   extended_data blob,
+///   filename text,
+///   size integer,
+///   last_modification_timestamp integer,
+///   last_access_timestamp integer,
+///   primary key(key)
+/// );
+///
+/// create index if not exists last_access_time_idx on kirogi(last_access_timestamp);
 
 internal class VMKVStorage: NSObject {
   
@@ -214,35 +212,35 @@ internal class VMKVStorage: NSObject {
       return false
     }
     
-    if self.type == .file && (filename == nil || filename!.isEmpty) {
-      return false
-    }
+    var saveItemResult: Bool
     
-    if let filename = filename, !filename.isEmpty {
-      let writeResult = self._fileWrite(withName: filename, data: value)
-      if !writeResult {
-        return writeResult
-      }
-      
-      let saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: filename)
-      if !saveItemResult {
-        self._fileDelete(withName: filename)
-      }
-      
-      return saveItemResult
-    }
-    else {
-      if self.type != .sqlite {
+    switch self.type {
+      case .file where filename != nil && !filename!.isEmpty:
+        fallthrough
+      case .mixed where filename != nil && !filename!.isEmpty:
+        let writeResult = self._fileWrite(withName: filename!, data: value)
+        if !writeResult {
+          return writeResult
+        }
+        
+        saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: filename!)
+        if !saveItemResult {
+          self._fileDelete(withName: filename!)
+        }
+      case .sqlite:
+        fallthrough
+      case .mixed:
         let filename = self._dbGetFilename(forKey: key)
         if let filename = filename {
           self._fileDelete(withName: filename)
         }
-      }
-      
-      let saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: nil)
-      
-      return saveItemResult
+        
+        saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: nil)
+      case .file:
+        saveItemResult = false
     }
+    
+    return saveItemResult
   }
   
   func getItem(forKey key: String?) -> VMKVStorageItem? {
@@ -253,16 +251,25 @@ internal class VMKVStorage: NSObject {
     var item = self._dbGetItem(withKey: key, excludeInlineData: false)
     
     if item != nil {
-      self._dbUpdateLastAccessTimestamp(withKey: key)
-      
-      if let filename = item?.filename {
-        item!.value = self._fileRead(withName: filename)
-        if item!.value == nil {
-          self._dbDeleteItem(withKey: key)
-          
-          item = nil
-        }
+      switch self.type {
+        case .sqlite:
+          break
+        case .file:
+          fallthrough
+        case .mixed:
+          if let filename = item!.filename {
+            item!.value = self._fileRead(withName: filename)
+            if item!.value == nil {
+              self._dbDeleteItem(withKey: key)
+              
+              item = nil
+            }
+          }
       }
+    }
+    
+    if item != nil {
+      self._dbUpdateLastAccessTimestamp(withKey: key)
     }
     
     return item
@@ -273,7 +280,9 @@ internal class VMKVStorage: NSObject {
       return nil
     }
     
-    return self._dbGetItem(withKey: key, excludeInlineData: true)
+    let itemInfo = self._dbGetItem(withKey: key, excludeInlineData: true)
+    
+    return itemInfo
   }
   
   func getItemValue(forKey key: String?) -> Data? {
@@ -281,37 +290,9 @@ internal class VMKVStorage: NSObject {
       return nil
     }
     
-    var itemValue: Data?
+    let item = self.getItem(forKey: key)
     
-    switch self.type {
-      case .sqlite:
-        itemValue = self._dbGetValue(forKey: key)
-      case .file:
-        let filename = self._dbGetFilename(forKey: key)
-        if let filename = filename {
-          itemValue = self._fileRead(withName: filename)
-          if itemValue == nil {
-            self._dbDeleteItem(withKey: key)
-            itemValue = nil
-          }
-        }
-      case .mixed:
-        let filename = self._dbGetFilename(forKey: key)
-        if let filename = filename {
-          itemValue = self._fileRead(withName: filename)
-          if itemValue == nil {
-            self._dbDeleteItem(withKey: key)
-            itemValue = nil
-          }
-        }
-        else {
-          itemValue = self._dbGetValue(forKey: key)
-        }
-    }
-    
-    if itemValue != nil {
-      self._dbUpdateLastAccessTimestamp(withKey: key)
-    }
+    let itemValue = item?.value
     
     return itemValue
   }
@@ -323,20 +304,24 @@ internal class VMKVStorage: NSObject {
     
     var items = self._dbGetItems(withKeys: keys, excludeInlineData: false) ?? []
     
-    if self.type != .sqlite {
-      items.enumerated().forEach { (indices, _) in
-        if let filename = items[indices].filename {
-          items[indices].value = self._fileRead(withName: filename)
-          
-          if items[indices].value == nil {
-            if let key = items[indices].key {
-              self._dbDeleteItem(withKey: key)
+    if !items.isEmpty {
+      switch self.type {
+        case .sqlite:
+          break
+        case .file:
+          fallthrough
+        case .mixed:
+          items.enumerated().forEach { (indices, element) in
+            if let filename = element.filename {
+              items[indices].value = self._fileRead(withName: filename)
+              if items[indices].value == nil {
+                self._dbDeleteItem(withKey: element.key)
+              }
             }
           }
-        }
+          
+          items.removeAll(where: { $0.value == nil })
       }
-      
-      items.removeAll(where: { $0.value == nil })
     }
     
     if !items.isEmpty {
@@ -351,7 +336,9 @@ internal class VMKVStorage: NSObject {
       return nil
     }
     
-    return self._dbGetItems(withKeys: keys, excludeInlineData: true)
+    let itemInfos = self._dbGetItems(withKeys: keys, excludeInlineData: true)
+    
+    return itemInfos
   }
   
   func getItemValues(forKeys keys: [String]?) -> [String: Data]? {
@@ -361,13 +348,13 @@ internal class VMKVStorage: NSObject {
     
     let items = self.getItems(forKeys: keys)
     
-    let kv = items?.reduce(into: [String: Data]()) {
+    let itemValues = items?.reduce(into: [String: Data]()) {
       if let key = $1.key, let value = $1.value {
         $0[key] = value
       }
     }
     
-    return kv
+    return itemValues
   }
   
   @discardableResult
@@ -377,6 +364,8 @@ internal class VMKVStorage: NSObject {
     }
     
     switch self.type {
+      case .sqlite:
+        break
       case .file:
         fallthrough
       case .mixed:
@@ -384,13 +373,11 @@ internal class VMKVStorage: NSObject {
         if let filename = filename {
           self._fileDelete(withName: filename)
         }
-      default:
-        break
     }
     
-    let deleteItemResult = self._dbDeleteItem(withKey: key)
+    let removeItemResult = self._dbDeleteItem(withKey: key)
     
-    return deleteItemResult
+    return removeItemResult
   }
   
   @discardableResult
@@ -400,6 +387,8 @@ internal class VMKVStorage: NSObject {
     }
     
     switch self.type {
+      case .sqlite:
+        break
       case .file:
         fallthrough
       case .mixed:
@@ -409,13 +398,11 @@ internal class VMKVStorage: NSObject {
             self._fileDelete(withName: $0)
           }
         }
-      default:
-        break
     }
     
-    let deleteItemsResult = self._dbDeleteItems(withKeys: keys)
+    let removeItemsResult = self._dbDeleteItems(withKeys: keys)
     
-    return deleteItemsResult
+    return removeItemsResult
   }
   
   @discardableResult
@@ -424,13 +411,15 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    var result: Bool = false
+    var removeItemsResult: Bool = false
     
     if size <= 0 {
-      result = self.removeAllItems()
+      removeItemsResult = self.removeAllItems()
     }
     else {
       switch self.type {
+        case .sqlite:
+          break
         case .file:
           fallthrough
         case .mixed:
@@ -440,18 +429,16 @@ internal class VMKVStorage: NSObject {
               self._fileDelete(withName: $0)
             }
           }
-        default:
-          break
       }
       
-      result = self._dbDeleteItemsLargerThanSize(size)
+      removeItemsResult = self._dbDeleteItemsLargerThanSize(size)
       
-      if result {
+      if removeItemsResult {
         self._dbCheckpoint()
       }
     }
     
-    return result
+    return removeItemsResult
   }
   
   @discardableResult
@@ -460,13 +447,15 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    var result: Bool = false
+    var removeItemsResult: Bool = false
     
     if time == .max {
-      result = self.removeAllItems()
+      removeItemsResult = self.removeAllItems()
     }
     else {
       switch self.type {
+        case .sqlite:
+          break
         case .file:
           fallthrough
         case .mixed:
@@ -476,18 +465,16 @@ internal class VMKVStorage: NSObject {
               self._fileDelete(withName: $0)
             }
           }
-        default:
-          break
       }
       
-      result = self._dbDeleteItemsEarlierThanTime(time)
+      removeItemsResult = self._dbDeleteItemsEarlierThanTime(time)
       
-      if result {
+      if removeItemsResult {
         self._dbCheckpoint()
       }
     }
     
-    return result
+    return removeItemsResult
   }
   
   @discardableResult
@@ -496,53 +483,60 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    guard maxSize > 0 else {
-      let result = self.removeAllItems()
+    var removeItemsResult: Bool = false
+    
+    if maxSize <= 0 {
+      removeItemsResult = self.removeAllItems()
+    }
+    else {
+      var totalItemSize = self._dbGetTotalItemSize()
       
-      return result
-    }
-    
-    var totalItemSize = self._dbGetTotalItemSize()
-    
-    guard totalItemSize >= 0 else {
-      return false
-    }
-    
-    guard totalItemSize > maxSize else {
-      return true
-    }
-    
-    var deletableItems: [VMKVStorageItem]!
-    
-    var result: Bool = false
-    
-    repeat {
-      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
-      
-      for deletableItem in deletableItems {
-        if totalItemSize > maxSize {
-          if let filename = deletableItem.filename {
-            self._fileDelete(withName: filename)
-          }
-          
-          result = self._dbDeleteItem(withKey: deletableItem.key)
-          totalItemSize -= deletableItem.size
-        }
-        else {
-          break
-        }
+      if totalItemSize < 0 {
+        removeItemsResult = false
+      }
+      else if totalItemSize <= maxSize {
+        removeItemsResult = true
+      }
+      else {
+        var deletableItems: [VMKVStorageItem]!
         
-        if !result {
-          break
+        repeat {
+          deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
+          
+          for deletableItem in deletableItems {
+            if totalItemSize > maxSize {
+              switch self.type {
+                case .sqlite:
+                  break
+                case .file:
+                  fallthrough
+                case .mixed:
+                  if let filename = deletableItem.filename {
+                    self._fileDelete(withName: filename)
+                  }
+              }
+              
+              removeItemsResult = self._dbDeleteItem(withKey: deletableItem.key)
+              
+              totalItemSize -= deletableItem.size
+            }
+            else {
+              break
+            }
+            
+            if !removeItemsResult {
+              break
+            }
+          }
+        } while totalItemSize > maxSize && deletableItems.count > 0 && removeItemsResult
+        
+        if removeItemsResult {
+          self._dbCheckpoint()
         }
       }
-    } while totalItemSize > maxSize && deletableItems.count > 0 && result
-    
-    if result {
-      self._dbCheckpoint()
     }
     
-    return result
+    return removeItemsResult
   }
   
   @discardableResult
@@ -551,60 +545,67 @@ internal class VMKVStorage: NSObject {
       return true
     }
     
-    guard maxCount > 0 else {
-      let result = self.removeAllItems()
+    var removeItemsResult: Bool = false
+    
+    if maxCount <= 0 {
+      removeItemsResult = self.removeAllItems()
+    }
+    else {
+      var totalItemCount = self._dbGetTotalItemCount()
       
-      return result
-    }
-    
-    var totalItemCount = self._dbGetTotalItemCount()
-    
-    guard totalItemCount >= 0 else {
-      return false
-    }
-    
-    guard totalItemCount > maxCount else {
-      return true
-    }
-    
-    var deletableItems: [VMKVStorageItem]!
-    
-    var result: Bool = false
-    
-    repeat {
-      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
-      
-      for deletableItem in deletableItems {
-        if totalItemCount > maxCount {
-          if let filename = deletableItem.filename {
-            self._fileDelete(withName: filename)
-          }
-          
-          result = self._dbDeleteItem(withKey: deletableItem.key)
-          totalItemCount -= 1
-        }
-        else {
-          break
-        }
+      if totalItemCount < 0 {
+        removeItemsResult = false
+      }
+      else if totalItemCount <= maxCount {
+        removeItemsResult = true
+      }
+      else {
+        var deletableItems: [VMKVStorageItem]!
         
-        if !result {
-          break
+        repeat {
+          deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 16) ?? []
+          
+          for deletableItem in deletableItems {
+            if totalItemCount > maxCount {
+              switch self.type {
+                case .sqlite:
+                  break
+                case .file:
+                  fallthrough
+                case .mixed:
+                  if let filename = deletableItem.filename {
+                    self._fileDelete(withName: filename)
+                  }
+              }
+              
+              removeItemsResult = self._dbDeleteItem(withKey: deletableItem.key)
+              
+              totalItemCount -= 1
+            }
+            else {
+              break
+            }
+            
+            if !removeItemsResult {
+              break
+            }
+          }
+        } while totalItemCount > maxCount && deletableItems.count > 0 && removeItemsResult
+        
+        if removeItemsResult {
+          self._dbCheckpoint()
         }
       }
-    } while totalItemCount > maxCount && deletableItems.count > 0 && result
-    
-    if result {
-      self._dbCheckpoint()
     }
     
-    return result
+    return removeItemsResult
   }
   
   @discardableResult
   func removeAllItems() -> Bool {
     let closeResult = self._dbClose()
     guard closeResult else {
-      return false
+      return closeResult
     }
     
     self._reset()
@@ -618,59 +619,66 @@ internal class VMKVStorage: NSObject {
   func removeAllItems(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
     let totalItemCount = self._dbGetTotalItemCount()
     
-    guard totalItemCount > 0 else {
-      completion?(totalItemCount < 0)
-      
-      return
+    if totalItemCount <= 0 {
+      completion?(totalItemCount == 0)
     }
-    
-    var left = totalItemCount
-    
-    var deletableItems: [VMKVStorageItem]!
-    
-    var result: Bool = false
-    
-    repeat {
-      deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 32) ?? []
+    else {
+      var leftItemCount = totalItemCount
       
-      for deletableItem in deletableItems {
-        if left > 0 {
-          if let filename = deletableItem.filename {
-            self._fileDelete(withName: filename)
+      var deletableItems: [VMKVStorageItem]!
+      
+      var removeItemsResult: Bool = false
+      
+      repeat {
+        deletableItems = self._dbGetItemSizeInfosOrderByAccessTime(withLimit: 32) ?? []
+        
+        for deletableItem in deletableItems {
+          if leftItemCount > 0 {
+            switch self.type {
+              case .sqlite:
+                break
+              case .file:
+                fallthrough
+              case .mixed:
+                if let filename = deletableItem.filename {
+                  self._fileDelete(withName: filename)
+                }
+            }
+            
+            removeItemsResult = self._dbDeleteItem(withKey: deletableItem.key)
+            
+            leftItemCount -= 1
+          }
+          else {
+            break
           }
           
-          result = self._dbDeleteItem(withKey: deletableItem.key)
-          left -= 1
-        }
-        else {
-          break
+          if !removeItemsResult {
+            break
+          }
         }
         
-        if !result {
-          break
-        }
+        progress?(totalItemCount - leftItemCount, totalItemCount)
+      } while leftItemCount > 0 && deletableItems.count > 0 && removeItemsResult
+      
+      if removeItemsResult {
+        self._dbCheckpoint()
       }
       
-      progress?(totalItemCount - left, totalItemCount)
-    } while left > 0 && deletableItems.count > 0 && result
-    
-    if result {
-      self._dbCheckpoint()
+      completion?(removeItemsResult)
     }
-    
-    completion?(!result)
   }
   
   func itemsCount() -> Int {
-    let result = self._dbGetTotalItemCount()
+    let totalItemCount = self._dbGetTotalItemCount()
     
-    return result
+    return totalItemCount
   }
   
   func itemsSize() -> Int {
-    let result = self._dbGetTotalItemSize()
+    let totalItemSize = self._dbGetTotalItemSize()
     
-    return result
+    return totalItemSize
   }
 }
 
@@ -1192,41 +1200,6 @@ extension VMKVStorage {
     } while true
     
     return itemSizeInfos
-  }
-  
-  private func _dbGetValue(forKey key: String) -> Data? {
-    let sql = """
-      select
-        inline_data
-      from
-        kirogi
-      where
-        key = ?1;
-      """
-    
-    let stmt = self._dbPrepareStmt(sql)
-    guard stmt != nil else {
-      return nil
-    }
-    
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
-    
-    var value: Data?
-    
-    let stepCode = sqlite3_step(stmt!)
-    
-    if stepCode == SQLITE_ROW {
-      let inlineDataLength = Int(sqlite3_column_bytes(stmt!, 0))
-      
-      value = sqlite3_column_blob(stmt!, 0).flatMap { inlineDataLength > 0 ? Data(bytes: $0, count: inlineDataLength) : nil }
-    }
-    else if stepCode != SQLITE_DONE {
-      if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
-      }
-    }
-    
-    return value
   }
   
   private func _dbGetFilename(forKey key: String) -> String? {
