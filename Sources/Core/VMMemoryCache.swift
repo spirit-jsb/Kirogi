@@ -343,7 +343,7 @@ public class VMMemoryCache: NSObject {
     
     pthread_mutex_lock(&self._lock)
     
-    let nowTime = CACurrentMediaTime()
+    let nowTime = ProcessInfo.processInfo.systemUptime
     
     var node = self._lru._dict[key]
     if node != nil {
@@ -396,7 +396,7 @@ public class VMMemoryCache: NSObject {
     
     let node = self._lru._dict[key]
     if node != nil {
-      node!._time = CACurrentMediaTime()
+      node!._time = ProcessInfo.processInfo.systemUptime
       
       self._lru.bringNodeToHead(node!)
     }
@@ -569,7 +569,7 @@ public class VMMemoryCache: NSObject {
   }
   
   private func _trim(forAge ageLimit: TimeInterval) {
-    let nowTime = CACurrentMediaTime()
+    let nowTime = ProcessInfo.processInfo.systemUptime
     
     var trimNotFinished = true
     pthread_mutex_lock(&self._lock)
