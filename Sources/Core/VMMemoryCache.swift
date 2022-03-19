@@ -10,11 +10,11 @@
 import Foundation
 import UIKit
 
-fileprivate func _VMMemoryCacheGetReleaseQueue(_ releaseOnMainThread: Bool) -> DispatchQueue {
+private func _VMMemoryCacheGetReleaseQueue(_ releaseOnMainThread: Bool) -> DispatchQueue {
   return releaseOnMainThread ? DispatchQueue.main : DispatchQueue.global(qos: .utility)
 }
 
-fileprivate class _VMLinkedMapNode: NSObject {
+private class _VMLinkedMapNode: NSObject {
   
   weak var _prev: _VMLinkedMapNode?
   weak var _next: _VMLinkedMapNode?
@@ -39,7 +39,7 @@ fileprivate class _VMLinkedMapNode: NSObject {
   }
 }
 
-fileprivate class _VMLinkedMap: NSObject {
+private class _VMLinkedMap: NSObject {
   
   var _dict: [AnyHashable: _VMLinkedMapNode]
   
