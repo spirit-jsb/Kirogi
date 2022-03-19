@@ -5,9 +5,10 @@
 //  Created by Max on 2022/3/13.
 //
 
-#if canImport(Foundation) && canImport(CSQLite)
+#if canImport(Foundation) && canImport(UIKit) && canImport(CSQLite)
 
 import Foundation
+import UIKit
 import CSQLite
 
 internal enum VMKVStorageType: Int {
@@ -57,6 +58,18 @@ internal class VMKVStorageItem: NSObject {
     self.lastModificationTimestamp = 0
     self.lastAccessTimestamp = 0
   }
+}
+
+private func _VMSharedApplication() -> UIApplication? {
+  let UIApplicationClass: AnyClass? = NSClassFromString("UIApplication")
+  
+  guard UIApplicationClass != nil && UIApplicationClass!.responds(to: Selector(("sharedApplication"))) else {
+    return nil
+  }
+  
+  let application = UIApplication.perform(Selector(("sharedApplication"))).takeUnretainedValue() as? UIApplication
+  
+  return application
 }
 
 /// File:
@@ -183,7 +196,13 @@ internal class VMKVStorage: NSObject {
   }
   
   deinit {
+    let taskIdentifier = _VMSharedApplication()?.beginBackgroundTask(withName: "com.max.jian.Kirogi.background.task", expirationHandler: nil)
+    
     self._dbClose()
+    
+    if taskIdentifier != nil && taskIdentifier != .invalid {
+      _VMSharedApplication()?.endBackgroundTask(taskIdentifier!)
+    }
   }
   
   func itemExists(forKey key: String?) -> Bool {
