@@ -303,15 +303,13 @@ internal class VMMemoryCache<Key: Hashable, Value>: NSObject {
     self.releaseOnMainThread = false
     self.releaseAsynchronously = true
     
-    NotificationCenter.default.addObserver(self, selector: #selector(_appDidReceiveMemoryWarning(_:)), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
-    NotificationCenter.default.addObserver(self, selector: #selector(_appDidEnterBackground(_:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
+    self._addObserver()
     
     self._trimRecursively()
   }
   
   deinit {
-    NotificationCenter.default.removeObserver(self, name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
-    NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
+    self._removeObserver()
     
     self._lru.removeAll()
   }
@@ -631,13 +629,27 @@ extension VMMemoryCache {
 
 extension VMMemoryCache {
   
-  @objc private func _appDidReceiveMemoryWarning(_ notification: Notification) {
+  private func _addObserver() {
+    NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { [weak self] (notification) in
+      self?._appDidReceiveMemoryWarning(notification)
+    }
+    NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil) { [weak self] (notification) in
+      self?._appDidEnterBackground(notification)
+    }
+  }
+  
+  private func _removeObserver() {
+    NotificationCenter.default.removeObserver(self, name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+    NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
+  }
+  
+  private func _appDidReceiveMemoryWarning(_ notification: Notification) {
     if self.shouldRemoveAllOnMemoryWarning {
       self.removeAllObjects()
     }
   }
   
-  @objc private func _appDidEnterBackground(_ notification: Notification) {
+  private func _appDidEnterBackground(_ notification: Notification) {
     if self.shouldRemoveAllWhenEnterBackground {
       self.removeAllObjects()
     }
