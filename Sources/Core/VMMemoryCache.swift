@@ -195,7 +195,7 @@ private class _VMLinkedMap: NSObject {
   }
 }
 
-internal class VMMemoryCache: NSObject {
+internal class VMMemoryCache<Key: Hashable, Value>: NSObject {
   
   var name: String?
   
@@ -316,25 +316,25 @@ internal class VMMemoryCache: NSObject {
     self._lru.removeAll()
   }
   
-  func contains(forKey key: AnyHashable?) -> Bool {
+  func contains(forKey key: Key?) -> Bool {
     guard let key = key else {
       return false
     }
     
     self._lock.lock()
     
-    let containsResult = self._lru._dict.contains(where: { $0.key == key })
+    let containsResult = self._lru._dict.contains(where: { $0.key == key as AnyHashable })
     
     self._lock.unlock()
     
     return containsResult
   }
   
-  func setObject(_ object: Any?, forKey key: AnyHashable?) {
+  func setObject(_ object: Value?, forKey key: Key?) {
     self.setObject(object, forKey: key, withCost: 0)
   }
   
-  func setObject(_ object: Any?, forKey key: AnyHashable?, withCost cost: UInt) {
+  func setObject(_ object: Value?, forKey key: Key?, withCost cost: UInt) {
     guard let key = key else {
       return
     }
@@ -391,7 +391,7 @@ internal class VMMemoryCache: NSObject {
     self._lock.unlock()
   }
   
-  func object(forKey key: AnyHashable?) -> Any? {
+  func object(forKey key: Key?) -> Value? {
     guard let key = key else {
       return nil
     }
@@ -412,7 +412,7 @@ internal class VMMemoryCache: NSObject {
     return objectResult
   }
   
-  func removeObject(forKey key: AnyHashable?) {
+  func removeObject(forKey key: Key?) {
     guard let key = key else {
       return
     }
