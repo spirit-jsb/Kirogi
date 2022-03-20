@@ -200,21 +200,21 @@ internal class VMMemoryCache: NSObject {
   var name: String?
   
   var totalCost: UInt {
-    let totalCost: UInt = self._lock.locked {
-      let totalCost = self._lru._totalCost
-      
-      return totalCost
-    }
+    self._lock.lock()
+    
+    let totalCost = self._lru._totalCost
+    
+    self._lock.unlock()
     
     return totalCost
   }
   
   var totalCount: UInt {
-    let totalCount: UInt = self._lock.locked {
-      let totalCount = self._lru._totalCount
-      
-      return totalCount
-    }
+    self._lock.lock()
+    
+    let totalCount = self._lru._totalCount
+    
+    self._lock.unlock()
     
     return totalCount
   }
@@ -233,35 +233,39 @@ internal class VMMemoryCache: NSObject {
   
   var releaseOnMainThread: Bool {
     get {
-      let releaseOnMainThread: Bool = self._lock.locked {
-        let releaseOnMainThread = self._lru._releaseOnMainThread
-        
-        return releaseOnMainThread
-      }
+      self._lock.lock()
+      
+      let releaseOnMainThread = self._lru._releaseOnMainThread
+      
+      self._lock.unlock()
       
       return releaseOnMainThread
     }
     set {
-      self._lock.locked {
-        self._lru._releaseOnMainThread = newValue
-      }
+      self._lock.lock()
+      
+      self._lru._releaseOnMainThread = newValue
+      
+      self._lock.unlock()
     }
   }
   
   var releaseAsynchronously: Bool {
     get {
-      let releaseAsynchronously: Bool = self._lock.locked {
-        let releaseAsynchronously = self._lru._releaseAsynchronously
-        
-        return releaseAsynchronously
-      }
+      self._lock.lock()
+      
+      let releaseAsynchronously = self._lru._releaseAsynchronously
+      
+      self._lock.unlock()
       
       return releaseAsynchronously
     }
     set {
-      self._lock.locked {
-        self._lru._releaseAsynchronously = newValue
-      }
+      self._lock.lock()
+      
+      self._lru._releaseAsynchronously = newValue
+      
+      self._lock.unlock()
     }
   }
   
@@ -317,11 +321,11 @@ internal class VMMemoryCache: NSObject {
       return false
     }
     
-    let containsResult: Bool = self._lock.locked {
-      let containsResult = self._lru._dict.contains(where: { $0.key == key })
-      
-      return containsResult
-    }
+    self._lock.lock()
+    
+    let containsResult = self._lru._dict.contains(where: { $0.key == key })
+    
+    self._lock.unlock()
     
     return containsResult
   }
@@ -341,48 +345,50 @@ internal class VMMemoryCache: NSObject {
       return
     }
     
-    self._lock.locked {
-      let nowTime = ProcessInfo.processInfo.systemUptime
+    self._lock.lock()
+    
+    let nowTime = ProcessInfo.processInfo.systemUptime
+    
+    var node = self._lru._dict[key]
+    if node != nil {
+      self._lru._totalCost -= node!._cost
+      self._lru._totalCost += cost
       
-      var node = self._lru._dict[key]
-      if node != nil {
-        self._lru._totalCost -= node!._cost
-        self._lru._totalCost += cost
-        
-        node!._value = object
-        
-        node!._cost = cost
-        
-        node!._time = nowTime
-        
-        self._lru.bringNodeToHead(node!)
-      }
-      else {
-        node = _VMLinkedMapNode(prev: nil, next: nil, key: key, value: object, cost: cost, time: nowTime)
-        
-        self._lru.insertNodeAtHead(node!)
-      }
+      node!._value = object
       
-      if self._lru._totalCost > self.costLimit {
-        self._queue.async {
-          self.trim(forCost: self.costLimit)
+      node!._cost = cost
+      
+      node!._time = nowTime
+      
+      self._lru.bringNodeToHead(node!)
+    }
+    else {
+      node = _VMLinkedMapNode(prev: nil, next: nil, key: key, value: object, cost: cost, time: nowTime)
+      
+      self._lru.insertNodeAtHead(node!)
+    }
+    
+    if self._lru._totalCost > self.costLimit {
+      self._queue.async {
+        self.trim(forCost: self.costLimit)
+      }
+    }
+    
+    if self._lru._totalCount > self.countLimit, let tailNode = self._lru.removeTail() {
+      if self._lru._releaseAsynchronously {
+        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+        releaseQueue.async {
+          _ = tailNode.classForCoder
         }
       }
-      
-      if self._lru._totalCount > self.countLimit, let tailNode = self._lru.removeTail() {
-        if self._lru._releaseAsynchronously {
-          let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
-          releaseQueue.async {
-            _ = tailNode.classForCoder
-          }
-        }
-        else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
-          DispatchQueue.main.async {
-            _ = tailNode.classForCoder
-          }
+      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+        DispatchQueue.main.async {
+          _ = tailNode.classForCoder
         }
       }
     }
+    
+    self._lock.unlock()
   }
   
   func object(forKey key: AnyHashable?) -> Any? {
@@ -390,18 +396,18 @@ internal class VMMemoryCache: NSObject {
       return nil
     }
     
-    let objectResult: Any? = self._lock.locked {
-      let node = self._lru._dict[key]
-      if node != nil {
-        node!._time = ProcessInfo.processInfo.systemUptime
-        
-        self._lru.bringNodeToHead(node!)
-      }
+    self._lock.lock()
+    
+    let node = self._lru._dict[key]
+    if node != nil {
+      node!._time = ProcessInfo.processInfo.systemUptime
       
-      let objectResult = node != nil ? node!._value : nil
-      
-      return objectResult
+      self._lru.bringNodeToHead(node!)
     }
+    
+    let objectResult = node != nil ? node!._value as? Value : nil
+    
+    self._lock.unlock()
     
     return objectResult
   }
@@ -411,30 +417,34 @@ internal class VMMemoryCache: NSObject {
       return
     }
     
-    self._lock.locked {
-      let node = self._lru._dict[key]
-      if node != nil {
-        self._lru.removeNode(node!)
-        
-        if self._lru._releaseAsynchronously {
-          let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
-          releaseQueue.async {
-            _ = node!.classForCoder
-          }
+    self._lock.lock()
+    
+    let node = self._lru._dict[key]
+    if node != nil {
+      self._lru.removeNode(node!)
+      
+      if self._lru._releaseAsynchronously {
+        let releaseQueue = _VMMemoryCacheGetReleaseQueue(self._lru._releaseOnMainThread)
+        releaseQueue.async {
+          _ = node!.classForCoder
         }
-        else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
-          DispatchQueue.main.async {
-            _ = node!.classForCoder
-          }
+      }
+      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+        DispatchQueue.main.async {
+          _ = node!.classForCoder
         }
       }
     }
+    
+    self._lock.unlock()
   }
   
   func removeAllObjects() {
-    self._lock.locked {
-      self._lru.removeAll()
-    }
+    self._lock.lock()
+    
+    self._lru.removeAll()
+    
+    self._lock.unlock()
   }
   
   func trim(forCost costLimit: UInt) {
@@ -464,7 +474,11 @@ extension VMMemoryCache {
   }
   
   private func _trimInBackground() {
-    self._queue.async {
+    self._queue.async { [weak self] in
+      guard let self = self else {
+        return
+      }
+      
       self._trim(forCost: self.costLimit)
       self._trim(forCount: self.countLimit)
       self._trim(forAge: self.ageLimit)
@@ -473,15 +487,17 @@ extension VMMemoryCache {
   
   private func _trim(forCost costLimit: UInt) {
     var trimNotFinished = true
-    self._lock.locked {
-      if costLimit == 0 {
-        self._lru.removeAll()
-        trimNotFinished = false
-      }
-      else if self._lru._totalCost <= costLimit {
-        trimNotFinished = false
-      }
+    self._lock.lock()
+    
+    if costLimit == 0 {
+      self._lru.removeAll()
+      trimNotFinished = false
     }
+    else if self._lru._totalCost <= costLimit {
+      trimNotFinished = false
+    }
+    
+    self._lock.unlock()
     
     guard trimNotFinished else {
       return
@@ -489,20 +505,22 @@ extension VMMemoryCache {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      self._lock.tryLocked { (tryLockResult) in
-        if tryLockResult {
-          if self._lru._totalCost > costLimit {
-            if let tailNode = self._lru.removeTail() {
-              holder.append(tailNode)
-            }
-          }
-          else {
-            trimNotFinished = false
+      let tryLockResult = self._lock.try()
+      
+      if tryLockResult {
+        if self._lru._totalCost > costLimit {
+          if let tailNode = self._lru.removeTail() {
+            holder.append(tailNode)
           }
         }
         else {
-          usleep(10 * 1000) // sleep 10 ms
+          trimNotFinished = false
         }
+        
+        self._lock.unlock()
+      }
+      else {
+        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
@@ -516,15 +534,17 @@ extension VMMemoryCache {
   
   private func _trim(forCount countLimit: UInt) {
     var trimNotFinished = true
-    self._lock.locked {
-      if countLimit == 0 {
-        self._lru.removeAll()
-        trimNotFinished = false
-      }
-      else if self._lru._totalCount <= countLimit {
-        trimNotFinished = false
-      }
+    self._lock.lock()
+    
+    if countLimit == 0 {
+      self._lru.removeAll()
+      trimNotFinished = false
     }
+    else if self._lru._totalCount <= countLimit {
+      trimNotFinished = false
+    }
+    
+    self._lock.unlock()
     
     guard trimNotFinished else {
       return
@@ -532,20 +552,22 @@ extension VMMemoryCache {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      self._lock.tryLocked { (tryLockResult) in
-        if tryLockResult {
-          if self._lru._totalCount > countLimit {
-            if let tailNode = self._lru.removeTail() {
-              holder.append(tailNode)
-            }
-          }
-          else {
-            trimNotFinished = false
+      let tryLockResult = self._lock.try()
+      
+      if tryLockResult {
+        if self._lru._totalCount > countLimit {
+          if let tailNode = self._lru.removeTail() {
+            holder.append(tailNode)
           }
         }
         else {
-          usleep(10 * 1000) // sleep 10 ms
+          trimNotFinished = false
         }
+        
+        self._lock.unlock()
+      }
+      else {
+        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
@@ -561,15 +583,17 @@ extension VMMemoryCache {
     let nowTime = ProcessInfo.processInfo.systemUptime
     
     var trimNotFinished = true
-    self._lock.locked {
-      if ageLimit <= 0 {
-        self._lru.removeAll()
-        trimNotFinished = false
-      }
-      else if (self._lru._tail == nil || (nowTime - self._lru._tail!._time) <= ageLimit) {
-        trimNotFinished = false
-      }
+    self._lock.lock()
+    
+    if ageLimit <= 0 {
+      self._lru.removeAll()
+      trimNotFinished = false
     }
+    else if (self._lru._tail == nil || (nowTime - self._lru._tail!._time) <= ageLimit) {
+      trimNotFinished = false
+    }
+    
+    self._lock.unlock()
     
     guard trimNotFinished else {
       return
@@ -577,20 +601,22 @@ extension VMMemoryCache {
     
     var holder = [_VMLinkedMapNode]()
     while trimNotFinished {
-      self._lock.tryLocked { (tryLockResult) in
-        if tryLockResult {
-          if (self._lru._tail != nil && (nowTime - self._lru._tail!._time) > ageLimit) {
-            if let tailNode = self._lru.removeTail() {
-              holder.append(tailNode)
-            }
-          }
-          else {
-            trimNotFinished = false
+      let tryLockResult = self._lock.try()
+      
+      if tryLockResult {
+        if (self._lru._tail != nil && (nowTime - self._lru._tail!._time) > ageLimit) {
+          if let tailNode = self._lru.removeTail() {
+            holder.append(tailNode)
           }
         }
         else {
-          usleep(10 * 1000) // sleep 10 ms
+          trimNotFinished = false
         }
+        
+        self._lock.unlock()
+      }
+      else {
+        usleep(10 * 1000) // sleep 10 ms
       }
     }
     
