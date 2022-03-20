@@ -503,7 +503,7 @@ internal class VMKVStorage: NSObject {
   }
   
   @discardableResult
-  func removeItemsToFixSize(_ maxSize: Int) -> Bool {
+  func removeItemsToFitSize(_ maxSize: Int) -> Bool {
     guard maxSize != .max else {
       return true
     }
