@@ -13,7 +13,7 @@ import CryptoKit
 extension String {
   
   var lastPathComponent: String {
-    return URL(fileURLWithPath: self).lastPathComponent
+    return (self as NSString).lastPathComponent
   }
   
   func md5() -> String? {
@@ -21,7 +21,7 @@ extension String {
   }
   
   func stringByAppendingPathComponent(_ aString: String) -> String {
-    return URL(fileURLWithPath: self).appendingPathComponent(aString).path
+    return (self as NSString).appendingPathComponent(aString) as String
   }
 }
 
