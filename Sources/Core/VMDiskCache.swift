@@ -383,10 +383,10 @@ public class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  internal func removeAllObjects(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
+  internal func removeAllObjects(_ progress: ((Int, Int) -> Void)?, block: ((Bool) -> Void)?) {
     guard self._kvStorage != nil else {
-      if completion != nil {
-        completion!(true)
+      if block != nil {
+        block!(true)
       }
       
       return
@@ -394,8 +394,8 @@ public class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     
     self._queue.async { [weak self] in
       guard let self = self else {
-        if completion != nil {
-          completion!(true)
+        if block != nil {
+          block!(true)
         }
         
         return
@@ -403,7 +403,7 @@ public class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       
       self.Lock()
       
-      self._kvStorage!.removeAllItems(progress, completion: completion)
+      self._kvStorage!.removeAllItems(progress, block: block)
       
       self.Unlock()
     }

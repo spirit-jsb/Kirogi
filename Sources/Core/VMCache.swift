@@ -150,9 +150,9 @@ public class VMCache<Key: Hashable, Value: Codable>: NSObject {
     self.diskCache.removeAllObjects(block)
   }
   
-  public func removeAllObjects(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
+  public func removeAllObjects(_ progress: ((Int, Int) -> Void)?, block: ((Bool) -> Void)?) {
     self.memoryCache.removeAllObjects()
-    self.diskCache.removeAllObjects(progress, completion: completion)
+    self.diskCache.removeAllObjects(progress, block: block)
   }
 }
 

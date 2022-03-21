@@ -634,11 +634,11 @@ internal class VMKVStorage: NSObject {
     return openResult && initializeResult
   }
   
-  func removeAllItems(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
+  func removeAllItems(_ progress: ((Int, Int) -> Void)?, block: ((Bool) -> Void)?) {
     let totalItemCount = self._dbGetTotalItemCount()
     
     if totalItemCount <= 0 {
-      completion?(totalItemCount == 0)
+      block?(totalItemCount == 0)
     }
     else {
       var leftItemCount = totalItemCount
@@ -683,7 +683,7 @@ internal class VMKVStorage: NSObject {
         self._dbCheckpoint()
       }
       
-      completion?(removeItemsResult)
+      block?(removeItemsResult)
     }
   }
   
