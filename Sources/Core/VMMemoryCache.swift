@@ -195,11 +195,11 @@ private class _VMLinkedMap: NSObject {
   }
 }
 
-internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
+public class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
   
-  var name: String?
+  public var name: String?
   
-  var totalCost: UInt {
+  public var totalCost: UInt {
     self._lock.lock()
     
     let totalCost = self._lru._totalCost
@@ -209,7 +209,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     return totalCost
   }
   
-  var totalCount: UInt {
+  public var totalCount: UInt {
     self._lock.lock()
     
     let totalCount = self._lru._totalCount
@@ -219,19 +219,19 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     return totalCount
   }
   
-  var costLimit: UInt
+  public var costLimit: UInt
   
-  var countLimit: UInt
+  public var countLimit: UInt
   
-  var ageLimit: TimeInterval
+  public var ageLimit: TimeInterval
   
-  var autoTrimInterval: TimeInterval
+  public var autoTrimInterval: TimeInterval
   
-  var shouldRemoveAllOnMemoryWarning: Bool
+  public var shouldRemoveAllOnMemoryWarning: Bool
   
-  var shouldRemoveAllWhenEnterBackground: Bool
+  public var shouldRemoveAllWhenEnterBackground: Bool
   
-  var releaseOnMainThread: Bool {
+  public var releaseOnMainThread: Bool {
     get {
       self._lock.lock()
       
@@ -250,7 +250,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  var releaseAsynchronously: Bool {
+  public var releaseAsynchronously: Bool {
     get {
       self._lock.lock()
       
@@ -275,7 +275,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
   
   private var _lru: _VMLinkedMap
   
-  static func initialize() -> VMMemoryCache {
+  internal static func initialize() -> VMMemoryCache {
     let memoryCache = VMMemoryCache()
     
     return memoryCache
@@ -314,7 +314,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     self._lru.removeAll()
   }
   
-  func contains(forKey key: Key?) -> Bool {
+  internal func contains(forKey key: Key?) -> Bool {
     guard let key = key else {
       return false
     }
@@ -328,11 +328,11 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     return containsResult
   }
   
-  func setObject(_ object: Value?, forKey key: Key?) {
+  internal func setObject(_ object: Value?, forKey key: Key?) {
     self.setObject(object, forKey: key, withCost: 0)
   }
   
-  func setObject(_ object: Value?, forKey key: Key?, withCost cost: UInt) {
+  internal func setObject(_ object: Value?, forKey key: Key?, withCost cost: UInt) {
     guard let key = key else {
       return
     }
@@ -389,7 +389,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     self._lock.unlock()
   }
   
-  func object(forKey key: Key?) -> Value? {
+  internal func object(forKey key: Key?) -> Value? {
     guard let key = key else {
       return nil
     }
@@ -410,7 +410,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     return objectResult
   }
   
-  func removeObject(forKey key: Key?) {
+  internal func removeObject(forKey key: Key?) {
     guard let key = key else {
       return
     }
@@ -437,7 +437,7 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     self._lock.unlock()
   }
   
-  func removeAllObjects() {
+  internal func removeAllObjects() {
     self._lock.lock()
     
     self._lru.removeAll()
@@ -445,15 +445,15 @@ internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
     self._lock.unlock()
   }
   
-  func trim(forCost costLimit: UInt) {
+  internal func trim(forCost costLimit: UInt) {
     self._trim(forCost: costLimit)
   }
   
-  func trim(forCount countLimit: UInt) {
+  internal func trim(forCount countLimit: UInt) {
     self._trim(forCount: countLimit)
   }
   
-  func trim(forAge ageLimit: TimeInterval) {
+  internal func trim(forAge ageLimit: TimeInterval) {
     self._trim(forAge: ageLimit)
   }
 }

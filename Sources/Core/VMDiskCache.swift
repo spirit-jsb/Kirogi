@@ -71,25 +71,25 @@ private func _VMFreeDiskSpace() -> Int {
   return freeDiskSpace
 }
 
-internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
+public class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   
-  var name: String?
+  public var name: String?
   
-  private(set) var path: String
+  private(set) public var path: String
   
-  private(set) var inlineThreshold: UInt
+  private(set) public var inlineThreshold: UInt
   
-  var costLimit: UInt
+  public var costLimit: UInt
   
-  var countLimit: UInt
+  public var countLimit: UInt
   
-  var ageLimit: TimeInterval
+  public var ageLimit: TimeInterval
   
-  var autoTrimInterval: TimeInterval
+  public var autoTrimInterval: TimeInterval
   
-  var freeDiskSpaceLimit: UInt
+  public var freeDiskSpaceLimit: UInt
   
-  var errorLogsEnabled: Bool {
+  public var errorLogsEnabled: Bool {
     get {
       self.Lock()
       
@@ -116,11 +116,13 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   
   private var _kvStorage: VMKVStorage?
   
-  static func initialize(path: String?) -> VMDiskCache? {
-    return VMDiskCache.initialize(path: path, inlineThreshold: 1024 * 20) // 20 kb
+  internal static func initialize(path: String?) -> VMDiskCache? {
+    let diskCache = VMDiskCache.initialize(path: path, inlineThreshold: 1024 * 20) // 20 kb
+    
+    return diskCache
   }
   
-  static func initialize(path: String?, inlineThreshold: UInt) -> VMDiskCache? {
+  internal static func initialize(path: String?, inlineThreshold: UInt) -> VMDiskCache? {
     let diskCacheObject = _VMDiskCachePool.shared.object(forKey: path) as? Self
     guard diskCacheObject == nil else {
       return diskCacheObject!
@@ -186,7 +188,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self._removeObserver()
   }
   
-  func contains(forKey key: Key?) -> Bool {
+  internal func contains(forKey key: Key?) -> Bool {
     guard self._kvStorage != nil else {
       return false
     }
@@ -201,7 +203,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     return containsResult
   }
   
-  func contains(forKey key: Key?, block: ((Key?, Bool) -> Void)?) {
+  internal func contains(forKey key: Key?, block: ((Key?, Bool) -> Void)?) {
     guard block != nil else {
       return
     }
@@ -217,7 +219,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func setObject(_ object: Value?, forKey key: Key?) {
+  internal func setObject(_ object: Value?, forKey key: Key?) {
     guard self._kvStorage != nil else {
       return
     }
@@ -261,7 +263,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func setObject(_ object: Value?, forKey key: Key?, block: (() -> Void)?) {
+  internal func setObject(_ object: Value?, forKey key: Key?, block: (() -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
@@ -275,7 +277,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func object(forKey key: Key?) -> Value? {
+  internal func object(forKey key: Key?) -> Value? {
     guard self._kvStorage != nil else {
       return nil
     }
@@ -312,7 +314,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     return value
   }
   
-  func object(forKey key: Key?, block: ((Key?, Value?) -> Void)?) {
+  internal func object(forKey key: Key?, block: ((Key?, Value?) -> Void)?) {
     guard block != nil else {
       return
     }
@@ -328,7 +330,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func removeObject(forKey key: Key?) {
+  internal func removeObject(forKey key: Key?) {
     guard self._kvStorage != nil else {
       return
     }
@@ -341,7 +343,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func removeObject(forKey key: Key?, block: ((Key?) -> Void)?) {
+  internal func removeObject(forKey key: Key?, block: ((Key?) -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
@@ -355,7 +357,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func removeAllObjects() {
+  internal func removeAllObjects() {
     guard self._kvStorage != nil else {
       return
     }
@@ -367,7 +369,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func removeAllObjects(_ block: (() -> Void)?) {
+  internal func removeAllObjects(_ block: (() -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
@@ -381,7 +383,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func removeAllObjects(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
+  internal func removeAllObjects(_ progress: ((Int, Int) -> Void)?, completion: ((Bool) -> Void)?) {
     guard self._kvStorage != nil else {
       if completion != nil {
         completion!(true)
@@ -407,7 +409,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func totalCost() -> Int {
+  internal func totalCost() -> Int {
     guard self._kvStorage != nil else {
       return -1
     }
@@ -421,7 +423,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     return totalCostResult
   }
   
-  func totalCost(_ block: ((Int) -> Void)?) {
+  internal func totalCost(_ block: ((Int) -> Void)?) {
     guard block != nil else {
       return
     }
@@ -437,7 +439,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func totalCount() -> Int {
+  internal func totalCount() -> Int {
     guard self._kvStorage != nil else {
       return -1
     }
@@ -451,7 +453,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     return totalCountResult
   }
   
-  func totalCount(_ block: ((Int) -> Void)?) {
+  internal func totalCount(_ block: ((Int) -> Void)?) {
     guard block != nil else {
       return
     }
@@ -467,7 +469,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func trim(forCost costLimit: UInt) {
+  internal func trim(forCost costLimit: UInt) {
     self.Lock()
     
     self._trim(forCost: costLimit)
@@ -475,7 +477,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func trim(forCost costLimit: UInt, block: (() -> Void)?) {
+  internal func trim(forCost costLimit: UInt, block: (() -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
@@ -489,7 +491,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func trim(forCount countLimit: UInt) {
+  internal func trim(forCount countLimit: UInt) {
     self.Lock()
     
     self._trim(forCount: countLimit)
@@ -497,7 +499,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func trim(forCount countLimit: UInt, block: (() -> Void)?) {
+  internal func trim(forCount countLimit: UInt, block: (() -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
@@ -511,7 +513,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     }
   }
   
-  func trim(forAge ageLimit: TimeInterval) {
+  internal func trim(forAge ageLimit: TimeInterval) {
     self.Lock()
     
     self._trim(forAge: ageLimit)
@@ -519,7 +521,7 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     self.Unlock()
   }
   
-  func trim(forAge ageLimit: TimeInterval, block: (() -> Void)?) {
+  internal func trim(forAge ageLimit: TimeInterval, block: (() -> Void)?) {
     self._queue.async { [weak self] in
       guard let self = self else {
         return
