@@ -26,7 +26,7 @@ private func _VMFreeDiskSpace() -> Int {
   return freeDiskSpace
 }
 
-internal class VMDiskCache<Key: Hashable, Value>: NSObject {
+internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   
   var name: String?
   
