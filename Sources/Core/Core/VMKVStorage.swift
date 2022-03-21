@@ -145,20 +145,20 @@ internal class VMKVStorage: NSObject {
     
     self.errorLogsEnabled = true
     
-    self._dbPath = path.appendingPathComponent(self._dbFilename)
+    self._dbPath = path.stringByAppendingPathComponent(self._dbFilename)
     
-    self._dataPath = path.appendingPathComponent(self._dataDirname)
+    self._dataPath = path.stringByAppendingPathComponent(self._dataDirname)
     
-    self._trashPath = path.appendingPathComponent(self._trashDirname)
+    self._trashPath = path.stringByAppendingPathComponent(self._trashDirname)
     
     self._trashQueue = DispatchQueue(label: "com.max.jian.Kirogi.cache.disk.trash")
     
     do {
       try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
       
-      try FileManager.default.createDirectory(atPath: path.appendingPathComponent(self._dataDirname), withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.createDirectory(atPath: path.stringByAppendingPathComponent(self._dataDirname), withIntermediateDirectories: true, attributes: nil)
       
-      try FileManager.default.createDirectory(atPath: path.appendingPathComponent(self._trashDirname), withIntermediateDirectories: true, attributes: nil)
+      try FileManager.default.createDirectory(atPath: path.stringByAppendingPathComponent(self._trashDirname), withIntermediateDirectories: true, attributes: nil)
     }
     catch {
       print("VMKVStorage init error: \(error)");
@@ -704,9 +704,9 @@ extension VMKVStorage {
   
   // MARK: - private
   private func _reset() {
-    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbFilename))
-    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbWALFilename))
-    try? FileManager.default.removeItem(atPath: self.path.appendingPathComponent(self._dbWALIndexFilename))
+    try? FileManager.default.removeItem(atPath: self.path.stringByAppendingPathComponent(self._dbFilename))
+    try? FileManager.default.removeItem(atPath: self.path.stringByAppendingPathComponent(self._dbWALFilename))
+    try? FileManager.default.removeItem(atPath: self.path.stringByAppendingPathComponent(self._dbWALIndexFilename))
     
     self._allFileMoveToTrash()
     self._emptyTrashInBackground()
@@ -1694,7 +1694,7 @@ extension VMKVStorage {
   
   @discardableResult
   private func _fileDelete(withName filename: String) -> Bool {
-    let fileDataPath = self._dataPath.appendingPathComponent(filename)
+    let fileDataPath = self._dataPath.stringByAppendingPathComponent(filename)
     
     do {
       try FileManager.default.removeItem(atPath: fileDataPath)
@@ -1711,7 +1711,7 @@ extension VMKVStorage {
     let uuidString = UUID().uuidString
     
     let dataPath = self._dataPath
-    let tmpTrashPath = self._trashPath.appendingPathComponent(uuidString)
+    let tmpTrashPath = self._trashPath.stringByAppendingPathComponent(uuidString)
     
     do {
       try FileManager.default.moveItem(atPath: dataPath, toPath: tmpTrashPath)
@@ -1734,7 +1734,7 @@ extension VMKVStorage {
         let directoryContents = try fileManager.contentsOfDirectory(atPath: trashPath)
         
         directoryContents.forEach {
-          let contentTrashPath = trashPath.appendingPathComponent($0)
+          let contentTrashPath = trashPath.stringByAppendingPathComponent($0)
           
           try? fileManager.removeItem(atPath: contentTrashPath)
         }

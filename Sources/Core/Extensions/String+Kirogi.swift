@@ -12,16 +12,16 @@ import CryptoKit
 
 extension String {
   
+  var lastPathComponent: String {
+    return URL(fileURLWithPath: self).lastPathComponent
+  }
+  
   func md5() -> String? {
     return self.data(using: .utf8).flatMap { Insecure.MD5.hash(data: $0) }.flatMap { $0.map { String(format: "%02x", $0) }.joined() }
   }
   
-  func appendingPathComponent(_ aString: String) -> String {
+  func stringByAppendingPathComponent(_ aString: String) -> String {
     return URL(fileURLWithPath: self).appendingPathComponent(aString).path
-  }
-  
-  func lastPathComponent() -> String {
-    return String(self.split(separator: "/").last ?? "/")
   }
 }
 

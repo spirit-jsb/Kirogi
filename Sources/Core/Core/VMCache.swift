@@ -34,7 +34,7 @@ public class VMCache<Key: Hashable, Value: Codable>: NSObject {
     }
     
     let cacheFolderPath = NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first
-    let path = cacheFolderPath?.appendingPathComponent(name)
+    let path = cacheFolderPath?.stringByAppendingPathComponent(name)
     
     self.init(path: path)
   }
@@ -45,7 +45,7 @@ public class VMCache<Key: Hashable, Value: Codable>: NSObject {
       return nil
     }
     
-    let name = path?.lastPathComponent()
+    let name = path?.lastPathComponent
     
     let memoryCache: VMMemoryCache<Key, Value> = .initialize()
     memoryCache.name = name
