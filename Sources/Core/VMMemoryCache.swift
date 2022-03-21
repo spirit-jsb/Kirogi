@@ -195,7 +195,7 @@ private class _VMLinkedMap: NSObject {
   }
 }
 
-internal class VMMemoryCache<Key: Hashable, Value>: NSObject {
+internal class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
   
   var name: String?
   
