@@ -33,9 +33,7 @@ internal class VMKVStorageItem: NSObject {
   
   var key: String?
   var value: Data?
-  
-  var extendedData: Data?
-  
+    
   var filename: String?
   
   var size: Int
@@ -43,12 +41,10 @@ internal class VMKVStorageItem: NSObject {
   var lastModificationTimestamp: Int32
   var lastAccessTimestamp: Int32
   
-  init(key: String?, value: Data?, extendedData: Data?, filename: String?, size: Int, lastModificationTimestamp: Int32, lastAccessTimestamp: Int32) {
+  init(key: String?, value: Data?, filename: String?, size: Int, lastModificationTimestamp: Int32, lastAccessTimestamp: Int32) {
     self.key = key
     self.value = value
-    
-    self.extendedData = extendedData
-    
+        
     self.filename = filename
     
     self.size = size
@@ -60,9 +56,7 @@ internal class VMKVStorageItem: NSObject {
   init(key: String?, filename: String?, size: Int) {
     self.key = key
     self.value = nil
-    
-    self.extendedData = nil
-    
+        
     self.filename = filename
     
     self.size = size
@@ -90,7 +84,6 @@ internal class VMKVStorageItem: NSObject {
 /// create table if not exists kirogi (
 ///   key text,
 ///   inline_data blob,
-///   extended_data blob,
 ///   filename text,
 ///   size integer,
 ///   last_modification_timestamp integer,
@@ -223,16 +216,16 @@ internal class VMKVStorage: NSObject {
   
   @discardableResult
   func saveItem(_ item: VMKVStorageItem) -> Bool {
-    return self.saveItem(withKey: item.key, value: item.value, extendedData: item.extendedData, filename: item.filename)
+    return self.saveItem(withKey: item.key, value: item.value, filename: item.filename)
   }
   
   @discardableResult
   func saveItem(withKey key: String?, value: Data?) -> Bool {
-    return self.saveItem(withKey: key, value: value, extendedData: nil, filename: nil)
+    return self.saveItem(withKey: key, value: value, filename: nil)
   }
   
   @discardableResult
-  func saveItem(withKey key: String?, value: Data?, extendedData: Data?, filename: String?) -> Bool {
+  func saveItem(withKey key: String?, value: Data?, filename: String?) -> Bool {
     guard let key = key, !key.isEmpty, let value = value, !value.isEmpty else {
       return false
     }
@@ -248,7 +241,7 @@ internal class VMKVStorage: NSObject {
           return writeResult
         }
         
-        saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: filename!)
+        saveItemResult = self._dbSaveItem(withKey: key, value: value, filename: filename!)
         if !saveItemResult {
           self._fileDelete(withName: filename!)
         }
@@ -260,7 +253,7 @@ internal class VMKVStorage: NSObject {
           self._fileDelete(withName: filename)
         }
         
-        saveItemResult = self._dbSaveItem(withKey: key, value: value, extendedData: extendedData, filename: nil)
+        saveItemResult = self._dbSaveItem(withKey: key, value: value, filename: nil)
       case .file:
         saveItemResult = false
     }
@@ -765,7 +758,6 @@ extension VMKVStorage {
       create table if not exists kirogi (
         key text,
         inline_data blob,
-        extended_data blob,
         filename text,
         size integer,
         last_modification_timestamp integer,
@@ -909,7 +901,7 @@ extension VMKVStorage {
   }
   
   @discardableResult
-  private func _dbSaveItem(withKey key: String, value: Data, extendedData: Data?, filename: String?) -> Bool {
+  private func _dbSaveItem(withKey key: String, value: Data, filename: String?) -> Bool {
     guard !key.isEmpty else {
       return false
     }
@@ -919,7 +911,6 @@ extension VMKVStorage {
         or replace into kirogi (
           key,
           inline_data,
-          extended_data,
           filename,
           size,
           last_modification_timestamp,
@@ -944,15 +935,13 @@ extension VMKVStorage {
     else {
       sqlite3_bind_blob(stmt!, 2, nil, 0, nil)
     }
+        
+    sqlite3_bind_text(stmt!, 3, filename, -1, nil)
     
-    sqlite3_bind_blob(stmt!, 3, extendedData.flatMap { [UInt8]($0) }, Int32(extendedData.flatMap { [UInt8]($0).count } ?? 0), nil)
+    sqlite3_bind_int(stmt!, 4, Int32([UInt8](value).count))
     
-    sqlite3_bind_text(stmt!, 4, filename, -1, nil)
-    
-    sqlite3_bind_int(stmt!, 5, Int32([UInt8](value).count))
-    
+    sqlite3_bind_int(stmt!, 5, timestamp)
     sqlite3_bind_int(stmt!, 6, timestamp)
-    sqlite3_bind_int(stmt!, 7, timestamp)
     
     let stepCode = sqlite3_step(stmt!)
     
@@ -974,7 +963,6 @@ extension VMKVStorage {
       """
       select
         key,
-        extended_data,
         filename,
         size,
         last_modification_timestamp,
@@ -989,7 +977,6 @@ extension VMKVStorage {
       select
         key,
         inline_data,
-        extended_data,
         filename,
         size,
         last_modification_timestamp,
@@ -1073,7 +1060,6 @@ extension VMKVStorage {
       """
       select
         key,
-        extended_data,
         filename,
         size,
         last_modification_timestamp,
@@ -1088,7 +1074,6 @@ extension VMKVStorage {
       select
         key,
         inline_data,
-        extended_data,
         filename,
         size,
         last_modification_timestamp,
@@ -1153,9 +1138,6 @@ extension VMKVStorage {
     let inlineDataLength = excludeInlineData ? 0 : Int(sqlite3_column_bytes(stmt, iCol))
     let inlineData = excludeInlineData ? nil : sqlite3_column_blob(stmt, iCol++).flatMap { inlineDataLength > 0 ? Data(bytes: $0, count: inlineDataLength) : nil }
     
-    let extendedDataLength = Int(sqlite3_column_bytes(stmt, iCol))
-    let extendedData = sqlite3_column_blob(stmt, iCol++).flatMap { extendedDataLength > 0 ? Data(bytes: $0, count: extendedDataLength) : nil }
-    
     let filename = sqlite3_column_text(stmt, iCol++).flatMap { String(cString: $0) }.flatMap { $0.isEmpty ? nil : $0 }
     
     let size = Int(sqlite3_column_int(stmt, iCol++))
@@ -1163,7 +1145,7 @@ extension VMKVStorage {
     let lastModificationTimestamp = sqlite3_column_int(stmt, iCol++)
     let lastAccessTimestamp = sqlite3_column_int(stmt, iCol++)
     
-    let item = VMKVStorageItem(key: key, value: inlineData, extendedData: extendedData, filename: filename, size: size, lastModificationTimestamp: lastModificationTimestamp, lastAccessTimestamp: lastAccessTimestamp)
+    let item = VMKVStorageItem(key: key, value: inlineData, filename: filename, size: size, lastModificationTimestamp: lastModificationTimestamp, lastAccessTimestamp: lastAccessTimestamp)
     
     return item
   }
