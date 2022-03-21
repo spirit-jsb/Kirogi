@@ -10,6 +10,51 @@
 import Foundation
 import UIKit
 
+private struct _VMDiskCachePool {
+  
+  static let shared = _VMDiskCachePool()
+  
+  let _lock: DispatchSemaphore
+  
+  var _pool: NSMapTable<NSString, AnyObject>
+  
+  private init() {
+    self._lock = DispatchSemaphore(value: 1)
+    
+    self._pool = NSMapTable(keyOptions: .strongMemory, valueOptions: .weakMemory, capacity: 0)
+  }
+  
+  func setObject(_ object: AnyObject?, forKey key: String?) {
+    guard let key = key, !key.isEmpty else {
+      return
+    }
+    
+    guard let object = object else {
+      return
+    }
+    
+    _ = self._lock.wait(timeout: .distantFuture)
+    
+    self._pool.setObject(object, forKey: key as NSString)
+    
+    self._lock.signal()
+  }
+  
+  func object(forKey key: String?) -> AnyObject? {
+    guard let key = key, !key.isEmpty else {
+      return nil
+    }
+    
+    _ = self._lock.wait(timeout: .distantFuture)
+    
+    let object = self._pool.object(forKey: key as NSString)
+    
+    self._lock.signal()
+    
+    return object
+  }
+}
+
 private func _VMFreeDiskSpace() -> Int {
   let homePath = NSHomeDirectory()
   
@@ -72,11 +117,20 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   private var _kvStorage: VMKVStorage?
   
   static func initialize(path: String?) -> VMDiskCache? {
-    
+    return VMDiskCache.initialize(path: path, inlineThreshold: 1024 * 20) // 20 kb
   }
   
   static func initialize(path: String?, inlineThreshold: UInt) -> VMDiskCache? {
+    let diskCacheObject = _VMDiskCachePool.shared.object(forKey: path) as? Self
+    guard diskCacheObject == nil else {
+      return diskCacheObject!
+    }
     
+    let diskCache = VMDiskCache(path: path, inlineThreshold: inlineThreshold)
+    
+    _VMDiskCachePool.shared.setObject(diskCache, forKey: path)
+    
+    return diskCache
   }
   
   private init?(path: String?, inlineThreshold: UInt) {
