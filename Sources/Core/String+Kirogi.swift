@@ -19,6 +19,10 @@ extension String {
   func appendingPathComponent(_ aString: String) -> String {
     return URL(fileURLWithPath: self).appendingPathComponent(aString).path
   }
+  
+  func lastPathComponent() -> String {
+    return String(self.split(separator: "/").last ?? "/")
+  }
 }
 
 #endif
