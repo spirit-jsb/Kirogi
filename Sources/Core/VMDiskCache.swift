@@ -164,19 +164,114 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   }
   
   func setObject(_ object: Value?, forKey key: Key?) {
+    guard self._kvStorage != nil else {
+      return
+    }
     
+    guard let key = key else {
+      return
+    }
+    
+    guard let object = object else {
+      self.removeObject(forKey: key)
+      
+      return
+    }
+    
+    let kvStorageKey = self._kvStorageKey(forKey: key)
+    
+    let kvStorageValue: Data?
+    do {
+      let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+      
+      try archiver.encodeEncodable(object, forKey: NSKeyedArchiveRootObjectKey)
+      
+      archiver.finishEncoding()
+      
+      kvStorageValue = archiver.encodedData
+    }
+    catch {
+      kvStorageValue = nil
+    }
+    
+    guard let kvStorageValue = kvStorageValue else {
+      return
+    }
+    
+    let kvStorageFilename = self._kvStorage!.type != .sqlite && [UInt8](kvStorageValue).count > self.inlineThreshold ? self._filename(forKey: key) : nil
+    
+    self._lock.wait(timeout: .distantFuture)
+    
+    self._kvStorage!.saveItem(withKey: kvStorageKey, value: kvStorageValue, filename: kvStorageFilename)
+    
+    self._lock.signal()
   }
   
   func setObject(_ object: Value?, forKey key: Key?, block: (() -> Void)?) {
-    
+    self._queue.async { [weak self] in
+      guard let self = self else {
+        return
+      }
+      
+      self.setObject(object, forKey: key)
+      
+      if block != nil {
+        block!()
+      }
+    }
   }
   
   func object(forKey key: Key?) -> Value? {
+    guard self._kvStorage != nil else {
+      return nil
+    }
     
+    guard let key = key else {
+      return nil
+    }
+    
+    let kvStorageKey = self._kvStorageKey(forKey: key)
+    
+    self._lock.wait(timeout: .distantFuture)
+    
+    let item = self._kvStorage!.getItem(forKey: kvStorageKey)
+    
+    self._lock.signal()
+    
+    guard let itemValue = item?.value else {
+      return nil
+    }
+    
+    let value: Value?
+    do {
+      let unarchiver = try NSKeyedUnarchiver(forReadingFrom: itemValue)
+      unarchiver.decodingFailurePolicy = .setErrorAndReturn
+      
+      value = unarchiver.decodeDecodable(Value.self, forKey: NSKeyedArchiveRootObjectKey)
+      
+      unarchiver.finishDecoding()
+    }
+    catch {
+      value = nil
+    }
+    
+    return value
   }
   
   func object(forKey key: Key?, block: ((Key?, Value?) -> Void)?) {
+    guard block != nil else {
+      return
+    }
     
+    self._queue.async { [weak self] in
+      guard let self = self else {
+        return
+      }
+      
+      let value = self.object(forKey: key)
+      
+      block!(key, value)
+    }
   }
   
   func removeObject(forKey key: Key?) {
@@ -391,7 +486,7 @@ extension VMDiskCache {
     guard let key = key else {
       return nil
     }
-
+    
     var kvStorageKeyResult: String
     
     if key is String {
@@ -402,7 +497,7 @@ extension VMDiskCache {
       key.hash(into: &nonrandomHasher)
       
       let nonrandomHashValue = nonrandomHasher.finalize()
-
+      
       kvStorageKeyResult = "\(nonrandomHashValue)"
     }
     
