@@ -46,20 +46,20 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   
   var errorLogsEnabled: Bool {
     get {
-      self._lock.wait(timeout: .distantFuture)
+      self.Lock()
       
       let errorLogsEnabled = self._kvStorage?.errorLogsEnabled ?? false
       
-      self._lock.signal()
+      self.Unlock()
       
       return errorLogsEnabled
     }
     set {
-      self._lock.wait(timeout: .distantFuture)
+      self.Lock()
       
       self._kvStorage?.errorLogsEnabled = newValue
       
-      self._lock.signal()
+      self.Unlock()
     }
   }
   
@@ -137,12 +137,12 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return false
     }
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     let kvStorageKey = self._kvStorageKey(forKey: key)
     let containsResult = self._kvStorage!.itemExists(forKey: kvStorageKey)
     
-    self._lock.signal()
+    self.Unlock()
     
     return containsResult
   }
@@ -198,13 +198,13 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return
     }
     
-    let kvStorageFilename = self._kvStorage!.type != .sqlite && [UInt8](kvStorageValue).count > self.inlineThreshold ? self._filename(forKey: key) : nil
+    let kvStorageFilename = self._kvStorage!.type != .sqlite && [UInt8](kvStorageValue).count > self.inlineThreshold ? self._kvStorageFilename(forKey: key) : nil
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._kvStorage!.saveItem(withKey: kvStorageKey, value: kvStorageValue, filename: kvStorageFilename)
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func setObject(_ object: Value?, forKey key: Key?, block: (() -> Void)?) {
@@ -232,11 +232,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
     
     let kvStorageKey = self._kvStorageKey(forKey: key)
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     let item = self._kvStorage!.getItem(forKey: kvStorageKey)
     
-    self._lock.signal()
+    self.Unlock()
     
     guard let itemValue = item?.value else {
       return nil
@@ -279,12 +279,12 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return
     }
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     let kvStorageKey = self._kvStorageKey(forKey: key)
     self._kvStorage!.removeItem(forKey: kvStorageKey)
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func removeObject(forKey key: Key?, block: ((Key?) -> Void)?) {
@@ -306,11 +306,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return
     }
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._kvStorage!.removeAllItems()
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func removeAllObjects(_ block: (() -> Void)?) {
@@ -345,11 +345,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
         return
       }
       
-      self._lock.wait(timeout: .distantFuture)
+      self.Lock()
       
       self._kvStorage!.removeAllItems(progress, completion: completion)
       
-      self._lock.signal()
+      self.Unlock()
     }
   }
   
@@ -358,11 +358,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return -1
     }
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     let totalCostResult = self._kvStorage!.itemsSize()
     
-    self._lock.signal()
+    self.Unlock()
     
     return totalCostResult
   }
@@ -388,11 +388,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
       return -1
     }
     
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     let totalCountResult = self._kvStorage!.itemsCount()
     
-    self._lock.signal()
+    self.Unlock()
     
     return totalCountResult
   }
@@ -414,11 +414,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   }
   
   func trim(forCost costLimit: UInt) {
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._trim(forCost: costLimit)
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func trim(forCost costLimit: UInt, block: (() -> Void)?) {
@@ -436,11 +436,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   }
   
   func trim(forCount countLimit: UInt) {
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._trim(forCount: countLimit)
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func trim(forCount countLimit: UInt, block: (() -> Void)?) {
@@ -458,11 +458,11 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
   }
   
   func trim(forAge ageLimit: TimeInterval) {
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._trim(forAge: ageLimit)
     
-    self._lock.signal()
+    self.Unlock()
   }
   
   func trim(forAge ageLimit: TimeInterval, block: (() -> Void)?) {
@@ -477,6 +477,17 @@ internal class VMDiskCache<Key: Hashable, Value: Codable>: NSObject {
         block!()
       }
     }
+  }
+}
+
+extension VMDiskCache {
+  
+  fileprivate func Lock() {
+    _ = self._lock.wait(timeout: .distantFuture)
+  }
+  
+  fileprivate func Unlock() {
+    self._lock.signal()
   }
 }
 
@@ -504,7 +515,7 @@ extension VMDiskCache {
     return kvStorageKeyResult
   }
   
-  private func _filename(forKey key: Key?) -> String? {
+  private func _kvStorageFilename(forKey key: Key?) -> String? {
     let filenameResult = self._kvStorageKey(forKey: key)?.md5()
     
     return filenameResult
@@ -527,14 +538,14 @@ extension VMDiskCache {
         return
       }
       
-      self._lock.wait(timeout: .distantFuture)
+      self.Lock()
       
       self._trim(forCost: self.costLimit)
       self._trim(forCount: self.countLimit)
       self._trim(forAge: self.ageLimit)
       self._trim(forFreeDiskSpace: self.freeDiskSpaceLimit)
       
-      self._lock.signal()
+      self.Unlock()
     }
   }
   
@@ -632,11 +643,11 @@ extension VMDiskCache {
   }
   
   private func _appWillTerminate(_ notification: Notification) {
-    self._lock.wait(timeout: .distantFuture)
+    self.Lock()
     
     self._kvStorage = nil
     
-    self._lock.signal()
+    self.Unlock()
   }
 }
 
