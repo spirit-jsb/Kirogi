@@ -183,7 +183,7 @@ private class _VMLinkedMap: NSObject {
           holder.removeAll()
         }
       }
-      else if self._releaseOnMainThread && pthread_main_np() == 0 {
+      else if self._releaseOnMainThread && !Thread.isMainThread {
         DispatchQueue.main.async {
           holder.removeAll()
         }
@@ -379,7 +379,7 @@ public class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
           _ = tailNode.classForCoder
         }
       }
-      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+      else if self._lru._releaseOnMainThread && !Thread.isMainThread {
         DispatchQueue.main.async {
           _ = tailNode.classForCoder
         }
@@ -427,7 +427,7 @@ public class VMMemoryCache<Key: Hashable, Value: Codable>: NSObject {
           _ = node!.classForCoder
         }
       }
-      else if self._lru._releaseOnMainThread && pthread_main_np() == 0 {
+      else if self._lru._releaseOnMainThread && !Thread.isMainThread {
         DispatchQueue.main.async {
           _ = node!.classForCoder
         }
