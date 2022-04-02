@@ -875,7 +875,7 @@ extension VMKVStorage {
       let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
       guard prepareCode == SQLITE_OK else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         return nil
@@ -947,7 +947,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite insert error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite insert error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1003,7 +1003,7 @@ extension VMKVStorage {
     }
     else if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1040,7 +1040,7 @@ extension VMKVStorage {
     }
     else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1089,7 +1089,7 @@ extension VMKVStorage {
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
       
       return nil
@@ -1115,7 +1115,7 @@ extension VMKVStorage {
       }
       else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         items = nil
@@ -1196,7 +1196,7 @@ extension VMKVStorage {
       }
       else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         itemSizeInfos = nil
@@ -1235,7 +1235,7 @@ extension VMKVStorage {
     }
     else if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1261,7 +1261,7 @@ extension VMKVStorage {
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
       
       return nil
@@ -1287,7 +1287,7 @@ extension VMKVStorage {
       }
       else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         filenames = nil
@@ -1338,7 +1338,7 @@ extension VMKVStorage {
       }
       else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         filenames = nil
@@ -1387,7 +1387,7 @@ extension VMKVStorage {
       }
       else {
         if self.errorLogsEnabled {
-          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+          print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
         }
         
         filenames = nil
@@ -1422,7 +1422,7 @@ extension VMKVStorage {
     }
     else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1451,7 +1451,7 @@ extension VMKVStorage {
     }
     else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite query error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1482,7 +1482,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1511,7 +1511,7 @@ extension VMKVStorage {
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
       
       return false
@@ -1525,7 +1525,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1552,7 +1552,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1579,7 +1579,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1614,7 +1614,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
@@ -1645,7 +1645,7 @@ extension VMKVStorage {
     let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
     guard prepareCode == SQLITE_OK else {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite stmp prepare error (\(prepareCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
       
       return false
@@ -1659,7 +1659,7 @@ extension VMKVStorage {
     
     if stepCode != SQLITE_DONE {
       if self.errorLogsEnabled {
-        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(describing: sqlite3_errmsg(self._db!)))")
+        print("\(#function) line:\(#line) sqlite update error (\(stepCode)): \(String(cString: sqlite3_errmsg(self._db!)))")
       }
     }
     
