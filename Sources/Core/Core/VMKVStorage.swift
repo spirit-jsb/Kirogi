@@ -914,10 +914,10 @@ extension VMKVStorage {
           filename,
           size,
           last_modification_timestamp,
-          last_access_timestamp,
+          last_access_timestamp
         )
       values
-        (?1, ?2, ?3, ?4, ?5, ?6, ?7);
+        (?1, ?2, ?3, ?4, ?5, ?6);
       """
     
     let stmt = self._dbPrepareStmt(sql)
@@ -966,7 +966,7 @@ extension VMKVStorage {
         filename,
         size,
         last_modification_timestamp,
-        last_access_timestamp,
+        last_access_timestamp
       from
         kirogi
       where
@@ -980,7 +980,7 @@ extension VMKVStorage {
         filename,
         size,
         last_modification_timestamp,
-        last_access_timestamp,
+        last_access_timestamp
       from
         kirogi
       where
@@ -1063,7 +1063,7 @@ extension VMKVStorage {
         filename,
         size,
         last_modification_timestamp,
-        last_access_timestamp,
+        last_access_timestamp
       from
         kirogi
       where
@@ -1077,7 +1077,7 @@ extension VMKVStorage {
         filename,
         size,
         last_modification_timestamp,
-        last_access_timestamp,
+        last_access_timestamp
       from
         kirogi
       where
