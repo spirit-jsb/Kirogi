@@ -104,7 +104,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.costLimit = 100
     self.memoryCache.countLimit = .max
     self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user_max")
-    usleep(10)
+    usleep(100)
     XCTAssertEqual(self.memoryCache.totalCost, 0)
     XCTAssertEqual(self.memoryCache.totalCount, 1)
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
@@ -115,7 +115,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.costLimit = .max
     self.memoryCache.countLimit = 1
     self.memoryCache.setObject(User(name: "jian", age: 1), forKey: "user_jian", withCost: 99)
-    usleep(10)
+    usleep(100)
     XCTAssertEqual(self.memoryCache.totalCost, 99)
     XCTAssertEqual(self.memoryCache.totalCount, 1)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
@@ -126,7 +126,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.costLimit = .max
     self.memoryCache.countLimit = 1
     self.memoryCache.setObject(User(name: "jian", age: 1), forKey: "user_jian", withCost: 99)
-    usleep(10)
+    usleep(100)
     XCTAssertEqual(self.memoryCache.totalCost, 99)
     XCTAssertEqual(self.memoryCache.totalCount, 1)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
@@ -138,7 +138,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.countLimit = 1
     self.memoryCache.releaseOnMainThread = true
     self.memoryCache.setObject(User(name: "max", age: 16), forKey: "user_max", withCost: 99)
-    usleep(10)
+    usleep(100)
     XCTAssertEqual(self.memoryCache.totalCost, 99)
     XCTAssertEqual(self.memoryCache.totalCount, 1)
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
@@ -154,7 +154,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.releaseOnMainThread = true
     DispatchQueue.global().async {
       self.memoryCache.setObject(User(name: "jian", age: 27), forKey: "user_jian")
-      usleep(10)
+      usleep(100)
       XCTAssertEqual(self.memoryCache.totalCost, 0)
       XCTAssertEqual(self.memoryCache.totalCount, 1)
       XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
@@ -240,7 +240,7 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     self.memoryCache.trim(forCost: 0)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -249,12 +249,12 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     self.memoryCache.trim(forCost: 500)
-    usleep(10)
+    usleep(100)
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
     self.memoryCache.trim(forCost: 210)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -264,7 +264,7 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     self.memoryCache.trim(forCost: 200)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
   }
@@ -275,7 +275,7 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     self.memoryCache.trim(forCount: 0)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -284,12 +284,12 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     self.memoryCache.trim(forCount: 3)
-    usleep(10)
+    usleep(100)
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
     self.memoryCache.trim(forCount: 1)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -299,7 +299,7 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     self.memoryCache.trim(forCount: 1)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
   }
@@ -309,9 +309,9 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.setObject(User(name: "jian", age: 1), forKey: "user_jian")
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
-    usleep(10)
+    usleep(100)
     self.memoryCache.trim(forAge: 0.0)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -327,7 +327,7 @@ class VMMemoryCacheTests: XCTestCase {
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
     self.memoryCache.trim(forAge: 0.09)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_jian"))
     
@@ -338,7 +338,7 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.setObject(User(name: "max", age: 1), forKey: "user_max")
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     self.memoryCache.trim(forAge: 0.09)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user_jian"))
     XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
   }
@@ -347,13 +347,13 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user")
     XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
     NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user"))
     
     self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user")
     XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
     NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-    usleep(10)
+    usleep(100)
     XCTAssertNil(self.memoryCache.object(forKey: "user"))
   }
   
