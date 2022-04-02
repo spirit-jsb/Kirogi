@@ -871,7 +871,7 @@ extension VMKVStorage {
     }
     
     var stmt = self._dbStmtCache![sql]
-    if stmt != nil {
+    if stmt == nil {
       let prepareCode = sqlite3_prepare_v2(self._db!, sql, -1, &stmt, nil)
       guard prepareCode == SQLITE_OK else {
         if self.errorLogsEnabled {
