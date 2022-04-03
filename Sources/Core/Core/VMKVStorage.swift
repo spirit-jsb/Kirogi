@@ -896,7 +896,7 @@ extension VMKVStorage {
   
   private func _dbBindJoinedKeys(_ keys: [String], stmt: OpaquePointer, fromIndex index: Int) {
     keys.enumerated().forEach { (indices, element) in
-      sqlite3_bind_text(stmt, Int32(index + indices), element, -1, nil)
+      sqlite3_bind_text(stmt, Int32(index + indices), element, -1, SQLITE_TRANSIENT)
     }
   }
   
@@ -927,16 +927,16 @@ extension VMKVStorage {
     
     let timestamp = Int32(Date().timeIntervalSince1970)
     
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
+    sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
     
     if filename == nil || filename!.isEmpty {
-      sqlite3_bind_blob(stmt!, 2, [UInt8](value), Int32([UInt8](value).count), nil)
+      sqlite3_bind_blob(stmt!, 2, [UInt8](value), Int32([UInt8](value).count), SQLITE_TRANSIENT)
     }
     else {
-      sqlite3_bind_blob(stmt!, 2, nil, 0, nil)
+      sqlite3_bind_blob(stmt!, 2, nil, 0, SQLITE_TRANSIENT)
     }
         
-    sqlite3_bind_text(stmt!, 3, filename, -1, nil)
+    sqlite3_bind_text(stmt!, 3, filename, -1, SQLITE_TRANSIENT)
     
     sqlite3_bind_int(stmt!, 4, Int32([UInt8](value).count))
     
@@ -992,7 +992,7 @@ extension VMKVStorage {
       return nil
     }
     
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
+    sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
     
     var item: VMKVStorageItem?
     
@@ -1029,7 +1029,7 @@ extension VMKVStorage {
       return -1
     }
     
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
+    sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
     
     var itemCount = -1
     
@@ -1224,7 +1224,7 @@ extension VMKVStorage {
       return nil
     }
     
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
+    sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
     
     var filename: String?
     
@@ -1476,7 +1476,7 @@ extension VMKVStorage {
       return false
     }
     
-    sqlite3_bind_text(stmt!, 1, key, -1, nil)
+    sqlite3_bind_text(stmt!, 1, key, -1, SQLITE_TRANSIENT)
     
     let stepCode = sqlite3_step(stmt!)
     
@@ -1608,7 +1608,7 @@ extension VMKVStorage {
     
     sqlite3_bind_int(stmt!, 1, Int32(Date().timeIntervalSince1970))
     
-    sqlite3_bind_text(stmt!, 2, key, -1, nil)
+    sqlite3_bind_text(stmt!, 2, key, -1, SQLITE_TRANSIENT)
     
     let stepCode = sqlite3_step(stmt!)
     
