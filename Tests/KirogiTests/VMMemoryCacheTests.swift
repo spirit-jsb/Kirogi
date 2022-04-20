@@ -32,10 +32,10 @@ class VMMemoryCacheTests: XCTestCase {
     self.memoryCache.name = "kirogi"
     XCTAssertEqual(self.memoryCache.name, "kirogi")
     
-    self.memoryCache.setObject(User(name: "max", age: 1), forKey: "user", withCost: 90)
+    self.memoryCache.setObject(User(name: "max", age: 1), forKey: "user_max", withCost: 90)
     XCTAssertEqual(self.memoryCache.totalCost, 90)
     
-    self.memoryCache.setObject(User(name: "max", age: 1), forKey: "user")
+    self.memoryCache.setObject(User(name: "max", age: 1), forKey: "user_max")
     XCTAssertEqual(self.memoryCache.totalCount, 1)
     
     XCTAssertEqual(self.memoryCache.costLimit, .max)
@@ -74,14 +74,14 @@ class VMMemoryCacheTests: XCTestCase {
   func test_contains() {
     XCTAssertFalse(self.memoryCache.contains(forKey: nil))
     
-    self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user")
-    XCTAssertTrue(self.memoryCache.contains(forKey: "user"))
+    self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user_max")
+    XCTAssertTrue(self.memoryCache.contains(forKey: "user_max"))
     XCTAssertFalse(self.memoryCache.contains(forKey: "kirogi"))
   }
   
   func test_setObject() {
     self.memoryCache.setObject(User(name: "max", age: 28), forKey: nil)
-    XCTAssertNil(self.memoryCache.object(forKey: "user"))
+    XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     
     self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user_max", withCost: 219)
     self.memoryCache.setObject(nil, forKey: "user")
@@ -173,15 +173,15 @@ class VMMemoryCacheTests: XCTestCase {
     
     XCTAssertNil(self.memoryCache.object(forKey: "user"))
     
-    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user")
-    XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
-    XCTAssertEqual(self.memoryCache.object(forKey: "user")?.name, "max")
-    XCTAssertEqual(self.memoryCache.object(forKey: "user")?.age, 26)
+    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user_max")
+    XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
+    XCTAssertEqual(self.memoryCache.object(forKey: "user_max")?.name, "max")
+    XCTAssertEqual(self.memoryCache.object(forKey: "user_max")?.age, 26)
     
-    self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user")
-    XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
-    XCTAssertEqual(self.memoryCache.object(forKey: "user")?.name, "max")
-    XCTAssertEqual(self.memoryCache.object(forKey: "user")?.age, 28)
+    self.memoryCache.setObject(User(name: "max", age: 28), forKey: "user_max")
+    XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
+    XCTAssertEqual(self.memoryCache.object(forKey: "user_max")?.name, "max")
+    XCTAssertEqual(self.memoryCache.object(forKey: "user_max")?.age, 28)
   }
   
   func test_removeObject() {
@@ -344,17 +344,17 @@ class VMMemoryCacheTests: XCTestCase {
   }
   
   func test_notification() {
-    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user")
-    XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
+    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user_max")
+    XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
     usleep(100)
-    XCTAssertNil(self.memoryCache.object(forKey: "user"))
+    XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
     
-    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user")
-    XCTAssertNotNil(self.memoryCache.object(forKey: "user"))
+    self.memoryCache.setObject(User(name: "max", age: 26), forKey: "user_max")
+    XCTAssertNotNil(self.memoryCache.object(forKey: "user_max"))
     NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
     usleep(100)
-    XCTAssertNil(self.memoryCache.object(forKey: "user"))
+    XCTAssertNil(self.memoryCache.object(forKey: "user_max"))
   }
   
   func test_thread_safe() {
@@ -362,10 +362,10 @@ class VMMemoryCacheTests: XCTestCase {
     let expectation = self.expectation(description: "test VMMemoryCache thread safe")
     
     DispatchQueue.concurrentPerform(iterations: expectationCount) { (index) in
-      self.memoryCache.setObject(User(name: "max_\(index)", age: index), forKey: "user_\(index)")
+      self.memoryCache.setObject(User(name: "max_\(index)", age: index), forKey: "user_\(index)_max")
       
       DispatchQueue.global().async {
-        XCTAssertNotNil(self.memoryCache.object(forKey: "user_\(index)"))
+        XCTAssertNotNil(self.memoryCache.object(forKey: "user_\(index)_max"))
         
         if index == expectationCount - 1 {
           expectation.fulfill()
